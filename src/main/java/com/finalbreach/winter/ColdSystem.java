@@ -187,10 +187,14 @@ public final class ColdSystem implements Runnable {
             }
         }
 
-        // 4. Візуал і підказка
-        if (s.frost && st.exposure > 0.0) {
-            double ratio = Math.min(1.0, st.exposure / (s.grace * 2.0 + 0.001));
-            p.setFreezeTicks((int) (ratio * 120)); // нижче 140, щоб не вмикалась ванільна шкода
+        // 4. Візуал і підказка: паморозь лише коли тепла бракує; коли грілка/одяг тримають тепло, знімаємо одразу
+        if (s.frost) {
+            if (deficit > 0.001 && st.exposure > 0.0) {
+                double ratio = Math.min(1.0, st.exposure / (s.grace * 2.0 + 0.001));
+                p.setFreezeTicks((int) (ratio * 120)); // нижче 140, щоб не вмикалась ванільна шкода
+            } else if (p.getFreezeTicks() > 0 && !p.isInPowderSnow()) {
+                p.setFreezeTicks(0);
+            }
         }
         // остання стадія: коли паморозь майже закрила екран, гравець ще й сповільнюється
         if (s.slowdown && deficit > 0.001) {
