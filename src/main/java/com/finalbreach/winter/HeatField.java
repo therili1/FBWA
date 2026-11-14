@@ -175,10 +175,8 @@ public final class HeatField implements Runnable {
                 if (n.cells == null || n.power < 0.02) {
                     continue;
                 }
-                int r = n.reach + 2;
-                if (Math.abs(n.ox - b.getX()) > r || Math.abs(n.oy - b.getY()) > r || Math.abs(n.oz - b.getZ()) > r) {
-                    continue;
-                }
+                // Без грубої коробки навколо однієї печі: група може бути довгим ланцюжком,
+                // а клітинки вже обмежені радіусом і бюджетом при побудові.
                 Float v = n.cells.get(key);
                 if (v != null) {
                     heat += v * n.power;
