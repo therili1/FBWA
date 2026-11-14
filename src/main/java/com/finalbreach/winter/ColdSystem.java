@@ -192,7 +192,7 @@ public final class ColdSystem implements Runnable {
             if (deficit > 0.001 && st.exposure > 0.0) {
                 double ratio = Math.min(1.0, st.exposure / (s.grace * 2.0 + 0.001));
                 p.setFreezeTicks((int) (ratio * 120)); // нижче 140, щоб не вмикалась ванільна шкода
-            } else if (p.getFreezeTicks() > 0 && !p.isInPowderSnow()) {
+            } else if (p.getFreezeTicks() > 0 && p.getLocation().getBlock().getType() != Material.POWDER_SNOW) {
                 p.setFreezeTicks(0);
             }
         }
