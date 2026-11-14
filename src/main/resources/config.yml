@@ -150,3 +150,8 @@ ice:
   thaw-above: 0
   radius: 20                   # навколо гравця, де перевіряється вода
   max-per-tick: 300            # запобіжник від лагів: скільки блоків змінювати за один цикл
+
+# Власний білий список (/wl). Ніки в plugins/FinalBreachWinter/whitelist.txt
+access:
+  enabled: true
+  message: "Пройдіть реєстрацію у discord.gg/fb"

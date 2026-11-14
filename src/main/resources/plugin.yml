@@ -10,7 +10,15 @@ commands:
     usage: /forecast
     permission: finalbreach.forecast.use
     permission-message: Немає прав на цю команду.
+  wl:
+    description: Керування білим списком сервера
+    usage: /wl add|remove|list|reload [нік]
+    permission: finalbreach.wl
+    permission-message: Немає прав на цю команду.
 permissions:
+  finalbreach.wl:
+    description: Керування білим списком
+    default: op
   finalbreach.forecast.use:
     description: Дозволяє дивитися /forecast
     default: true
