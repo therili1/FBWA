@@ -73,14 +73,23 @@ public final class Heaters {
         return item.getItemMeta().getPersistentDataContainer().get(keyId, PersistentDataType.STRING);
     }
 
-    /** Частка тепла від грілки: 1.0 на початку, плавно до 0.0 в кінці. */
+    /** Частка тепла: повна, доки лишається більше 20% часу; далі плавно до 0 в кінці. */
     public double factor(ItemStack item, double pendingSeconds) {
         double left = left(item) - pendingSeconds;
-        return Math.max(0.0, Math.min(1.0, left / total(item)));
+        double ratio = left / total(item);
+        return Math.max(0.0, Math.min(1.0, ratio / FADE_START));
     }
+
+    /** Частка часу, після якої грілка починає слабшати. */
+    private static final double FADE_START = 0.2;
 
     /** Повертає копію предмета з новою (повною) грілкою. Якщо грілка вже була, оновлює її. */
     public ItemStack apply(ItemStack source, int totalSeconds) {
+        return apply(source, totalSeconds, false);
+    }
+
+    /** magma = true: магматична грілка (окрема назва, позначка в PDC). */
+    public ItemStack apply(ItemStack source, int totalSeconds, boolean magma) {
         ItemStack out = source.clone();
         out.setAmount(1);
         ItemMeta meta = out.getItemMeta();
@@ -88,6 +97,9 @@ public final class Heaters {
             return out;
         }
         clearTags(meta);
+        if (magma) {
+            meta.displayName(Component.text("Магматична грілка", NamedTextColor.GOLD));
+        }
 
         PersistentDataContainer c = meta.getPersistentDataContainer();
         c.set(keyId, PersistentDataType.STRING, UUID.randomUUID().toString());

@@ -48,6 +48,7 @@ public final class WinterPlugin extends JavaPlugin implements Listener {
     private SnowSystem snow;
     private CampfireSystem campfires;
     private NamespacedKey recipeKey;
+    private NamespacedKey magmaRecipeKey;
 
     private File changesFile;
     private YamlConfiguration changesCfg;
@@ -272,6 +273,7 @@ public final class WinterPlugin extends JavaPlugin implements Listener {
 
     private void registerRecipe() {
         recipeKey = new NamespacedKey(this, "heater");
+        magmaRecipeKey = new NamespacedKey(this, "heater_magma");
 
         ItemStack placeholder = new ItemStack(Material.IRON_CHESTPLATE);
         ItemMeta meta = placeholder.getItemMeta();
@@ -285,10 +287,23 @@ public final class WinterPlugin extends JavaPlugin implements Listener {
         r.setIngredient('A', new RecipeChoice.MaterialChoice(new ArrayList<>(Heaters.heatableMaterials())));
         r.setCategory(CraftingBookCategory.EQUIPMENT);
         Bukkit.addRecipe(r);
+
+        // Магматична грілка: магма замість вугілля по краях, довша тривалість
+        ShapedRecipe mr = new ShapedRecipe(magmaRecipeKey, placeholder);
+        mr.shape("LML", "MAM", "LML");
+        mr.setIngredient('L', Material.LEATHER);
+        mr.setIngredient('M', Material.MAGMA_BLOCK);
+        mr.setIngredient('A', new RecipeChoice.MaterialChoice(new ArrayList<>(Heaters.heatableMaterials())));
+        mr.setCategory(CraftingBookCategory.EQUIPMENT);
+        Bukkit.addRecipe(mr);
     }
 
     private boolean isHeaterRecipe(Recipe r) {
-        return r instanceof Keyed k && k.getKey().equals(recipeKey);
+        return r instanceof Keyed k && (k.getKey().equals(recipeKey) || k.getKey().equals(magmaRecipeKey));
+    }
+
+    private boolean isMagmaRecipe(Recipe r) {
+        return r instanceof Keyed k && k.getKey().equals(magmaRecipeKey);
     }
 
     @EventHandler
@@ -302,7 +317,10 @@ public final class WinterPlugin extends JavaPlugin implements Listener {
             e.getInventory().setResult(null);
             return;
         }
-        e.getInventory().setResult(heaters.apply(center, settings.heaterSeconds));
+        boolean magma = isMagmaRecipe(e.getRecipe());
+        e.getInventory().setResult(magma
+                ? heaters.apply(center, settings.magmaHeaterSeconds, true)
+                : heaters.apply(center, settings.heaterSeconds));
     }
 
     @EventHandler
@@ -320,7 +338,10 @@ public final class WinterPlugin extends JavaPlugin implements Listener {
             e.setCancelled(true);
             return;
         }
-        e.setCurrentItem(heaters.apply(center, settings.heaterSeconds));
+        boolean magma = isMagmaRecipe(e.getRecipe());
+        e.setCurrentItem(magma
+                ? heaters.apply(center, settings.magmaHeaterSeconds, true)
+                : heaters.apply(center, settings.heaterSeconds));
     }
 
     // ---------- сніг гравців ----------
@@ -353,6 +374,7 @@ public final class WinterPlugin extends JavaPlugin implements Listener {
     public void onJoin(PlayerJoinEvent e) {
         if (settings.discoverRecipe) {
             e.getPlayer().discoverRecipe(recipeKey);
+            e.getPlayer().discoverRecipe(magmaRecipeKey);
         }
     }
 

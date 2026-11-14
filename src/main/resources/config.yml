@@ -113,6 +113,7 @@ snow:
 
 heater:
   duration-seconds: 600        # скільки тримає грілка (10 хв)
+  magma-duration-seconds: 1800 # магматична грілка (30 хв)
   lore-update-seconds: 30      # як часто записувати залишок в предмет (рідше = менше звуків екіпіровки)
   discover-recipe-on-join: true
 

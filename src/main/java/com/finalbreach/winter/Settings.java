@@ -114,6 +114,7 @@ public final class Settings {
 
     // грілки
     public final int heaterSeconds;
+    public final int magmaHeaterSeconds;
     public final int loreUpdate;
     public final boolean discoverRecipe;
 
@@ -209,6 +210,7 @@ public final class Settings {
         stormRadius = Math.max(3.0, Math.min(20.0, c.getDouble("snow.storm-radius", 8.0)));
 
         heaterSeconds = Math.max(10, c.getInt("heater.duration-seconds", 600));
+        magmaHeaterSeconds = Math.max(10, c.getInt(\"heater.magma-duration-seconds\", 1800));
         loreUpdate = Math.max(1, c.getInt("heater.lore-update-seconds", 30));
         discoverRecipe = c.getBoolean("heater.discover-recipe-on-join", true);
     }
