@@ -17,6 +17,7 @@ import org.bukkit.block.BlockState;
 import org.bukkit.block.TileState;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Lightable;
+import org.bukkit.event.block.BlockIgniteEvent;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
@@ -161,6 +162,23 @@ public final class CampfireSystem implements Listener, Runnable {
         }
     }
 
+    /** Діагностика: що відбувається з паливом у момент підпалу (campfire.debug у конфізі). */
+    @EventHandler
+    public void onIgnite(BlockIgniteEvent e) {
+        Block b = e.getBlock();
+        if (!isCampfire(b.getType()) || !plugin.isManaged(b.getWorld())) {
+            return;
+        }
+        if (!plugin.getConfig().getBoolean("campfire.debug", false)) {
+            return;
+        }
+        plugin.getLogger().info("[campfire] ignite " + b.getX() + "," + b.getY() + "," + b.getZ()
+                + " cause=" + e.getCause() + " stored(before)=" + readStored(b) + " cache=" + fuelCache.get(cacheKey(b)));
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> plugin.getLogger().info(
+                "[campfire] +1 tick " + b.getX() + "," + b.getY() + "," + b.getZ()
+                        + " stored=" + readStored(b) + " lit=" + (b.getBlockData() instanceof Lightable l && l.isLit())), 1L);
+    }
+
     private void burn(Block b, World w) {
         if (!(b.getBlockData() instanceof Lightable l) || !l.isLit()) {
             return; // не горить: паливо не витрачається
@@ -176,6 +194,10 @@ public final class CampfireSystem implements Listener, Runnable {
         }
         fuel -= rate;
 
+        if (plugin.getConfig().getBoolean("campfire.debug", false) && fuel <= 0) {
+            plugin.getLogger().info("[campfire] out " + b.getX() + "," + b.getY() + "," + b.getZ()
+                    + " stored=" + stored + " fuel=" + fuel);
+        }
         if (fuel <= 0) {
             l.setLit(false);
             b.setBlockData(l, false);

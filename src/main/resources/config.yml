@@ -105,6 +105,7 @@ heat:
     SOUL_CAMPFIRE: { power: 200, radiant: 8 }
 
 campfire:
+  debug: false                # логувати паливо багаття при підпалі і згасанні (для пошуку бага)
   place-unlit: true            # ванільне багаття ставиться погашеним
   fuel-cap-seconds: 600        # максимум палива (10 хв)
   stick-seconds: 30            # +30 с за паличку
