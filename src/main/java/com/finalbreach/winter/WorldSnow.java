@@ -36,7 +36,8 @@ public final class WorldSnow implements Listener {
         if (!plugin.isManaged(w)) {
             return;
         }
-        double chance = plugin.getConfig().getDouble("worldgen.snow.chance", 0.35);
+        double chance = plugin.getConfig().getDouble("worldgen.snow.chance", 1.0);
+        boolean allBiomes = plugin.getConfig().getBoolean("worldgen.snow.all-biomes", true);
         Chunk c = e.getChunk();
         ThreadLocalRandom rnd = ThreadLocalRandom.current();
         Settings s = plugin.settings();
@@ -61,7 +62,7 @@ public final class WorldSnow implements Listener {
                         || gm.name().contains("LOG") || gm.name().contains("WOOD")) {
                     continue;
                 }
-                if (plugin.profile(ground).equals(s.warmProfile)) {
+                if (!allBiomes && plugin.profile(ground).equals(s.warmProfile)) {
                     continue;
                 }
                 Snow snow = (Snow) Material.SNOW.createBlockData();
