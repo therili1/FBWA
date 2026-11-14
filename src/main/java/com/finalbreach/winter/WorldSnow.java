@@ -52,8 +52,16 @@ public final class WorldSnow implements Listener {
                 int top = w.getHighestBlockYAt(x, z, HeightMap.MOTION_BLOCKING_NO_LEAVES);
                 Block ground = w.getBlockAt(x, top, z);
                 Block above = ground.getRelative(0, 1, 0);
-                if (!above.getType().isAir()) {
-                    continue;
+                Material am = above.getType();
+                if (am == Material.SNOW) {
+                    continue; // вже є сніг: не нарощуємо шари
+                }
+                if (!am.isAir()) {
+                    // Трава, папороть, квіти та інші неповні рослини: прибираємо, щоб сніг лягав рівно
+                    if (!above.isPassable() || above.isLiquid()) {
+                        continue;
+                    }
+                    above.setType(Material.AIR, true);
                 }
                 Material gm = ground.getType();
                 if (!gm.isSolid() || gm == Material.ICE || gm == Material.PACKED_ICE
