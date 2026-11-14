@@ -165,7 +165,7 @@ public final class Settings {
         damage = Math.max(0, c.getDouble("cold.damage", 1.0));
         frost = c.getBoolean("cold.frost-overlay", true);
         actionbar = c.getBoolean("cold.actionbar", true);
-        safeAbove = Math.max(mn + 1, c.getDouble("cold.safe-above", 18));
+        safeAbove = Math.max(mn + 1, c.getDouble("cold.safe-above", 10));
         feelWarm = Math.max(0.5, c.getDouble("cold.feel-warm-seconds", 6));
         feelCool = Math.max(0.5, c.getDouble("cold.feel-cool-seconds", 12));
         hungerRate = Math.max(0, c.getDouble("cold.hunger-exhaustion-per-second", 0.08));
