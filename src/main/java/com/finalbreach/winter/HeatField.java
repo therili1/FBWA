@@ -435,6 +435,9 @@ public final class HeatField implements Runnable {
                         continue;
                     }
                     dist.put(key, c[3] + step);
+                    if (pass && isOpening(b.getType())) {
+                        leak += OPEN_LEAK; // відчинені двері/люк/хвіртка: тепло тікає
+                    }
                     queue.add(new int[]{nx, ny, nz, c[3] + step});
                 } else if (!origin) {
                     leak += leakOf(b.getType());
@@ -466,6 +469,15 @@ public final class HeatField implements Runnable {
     }
 
     /** Наскільки стіна з цього матеріалу випускає тепло (менше = краще тримає). */
+    /** Втрата тепла через відчинений отвір (двері, люк, хвіртка). */
+    private static final double OPEN_LEAK = 0.8;
+
+    /** Прохідний блок-отвір: відчинені двері, люк або хвіртка. */
+    private static boolean isOpening(Material m) {
+        String n = m.name();
+        return n.contains("DOOR") || n.contains("TRAPDOOR") || n.contains("GATE");
+    }
+
     private static double leakOf(Material m) {
         String n = m.name();
         if (n.contains("WOOL") || n.contains("CARPET")) {
