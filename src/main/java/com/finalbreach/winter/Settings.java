@@ -184,7 +184,7 @@ public final class Settings {
         heatEvery = Math.max(1, c.getInt("heat.update-seconds", 2));
         warmup = Math.max(1, c.getDouble("heat.warmup-seconds", 30));
         cooldown = Math.max(1, c.getDouble("heat.cooldown-seconds", 20));
-        sealedFactor = Math.max(1.0, Math.min(20.0, c.getDouble("heat.sealed-cooldown-factor", 5.0)));
+        sealedFactor = Math.max(1.0, Math.min(60.0, c.getDouble("heat.sealed-cooldown-factor", 30.0)));
         heatDistance = Math.max(3, Math.min(24, c.getInt("heat.max-distance", 12)));
         heatCells = Math.max(50, Math.min(3000, c.getInt("heat.max-cells", 700)));
         heatDecay = Math.max(1.0, Math.min(40.0, c.getDouble("heat.decay-blocks", 10.0)));
