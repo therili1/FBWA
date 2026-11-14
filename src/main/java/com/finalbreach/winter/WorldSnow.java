@@ -13,8 +13,8 @@ import org.bukkit.event.world.ChunkLoadEvent;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * Одиночні шари снігу в нових чанках. Спрацьовує лише для щойно згенерованих чанків,
- * тому вже існуючий світ не змінюється. Пропускає теплі біоми, дерева, воду й лід.
+ * Сніг і заморожування води в нових чанках. Блоки НЕ міняємо всередині події завантаження:
+ * це тягне сусідні чанки і підвішує сервер. Роботу відкладаємо на наступний тік і без фізики.
  */
 public final class WorldSnow implements Listener {
 
@@ -36,11 +36,19 @@ public final class WorldSnow implements Listener {
         if (!plugin.isManaged(w)) {
             return;
         }
+        Chunk c = e.getChunk();
+        plugin.getServer().getScheduler().runTask(plugin, () -> {
+            if (c.isLoaded()) {
+                build(w, c);
+            }
+        });
+    }
+
+    private void build(World w, Chunk c) {
         double chance = plugin.getConfig().getDouble("worldgen.snow.chance", 1.0);
         boolean allBiomes = plugin.getConfig().getBoolean("worldgen.snow.all-biomes", true);
-        Chunk c = e.getChunk();
-        ThreadLocalRandom rnd = ThreadLocalRandom.current();
         Settings s = plugin.settings();
+        ThreadLocalRandom rnd = ThreadLocalRandom.current();
 
         for (int dx = 0; dx < 16; dx++) {
             for (int dz = 0; dz < 16; dz++) {
@@ -51,18 +59,6 @@ public final class WorldSnow implements Listener {
                 }
                 int top = w.getHighestBlockYAt(x, z, HeightMap.MOTION_BLOCKING_NO_LEAVES);
                 Block ground = w.getBlockAt(x, top, z);
-                Block above = ground.getRelative(0, 1, 0);
-                Material am = above.getType();
-                if (am == Material.SNOW) {
-                    continue; // вже є сніг: не нарощуємо шари
-                }
-                if (!am.isAir()) {
-                    // Трава, папороть, квіти та інші неповні рослини: прибираємо, щоб сніг лягав рівно
-                    if (!above.isPassable() || above.isLiquid()) {
-                        continue;
-                    }
-                    above.setType(Material.AIR, true);
-                }
                 Material gm = ground.getType();
                 if (!gm.isSolid() || gm == Material.ICE || gm == Material.PACKED_ICE
                         || gm == Material.BLUE_ICE || gm == Material.SNOW_BLOCK
@@ -73,18 +69,39 @@ public final class WorldSnow implements Listener {
                 if (!allBiomes && plugin.profile(ground).equals(s.warmProfile)) {
                     continue;
                 }
+                Block above = ground.getRelative(0, 1, 0);
+                Material am = above.getType();
+                if (am == Material.SNOW) {
+                    continue; // вже є сніг: не нарощуємо шари
+                }
+                if (!am.isAir()) {
+                    if (!above.isPassable() || above.isLiquid()) {
+                        continue;
+                    }
+                    clearPlant(above);
+                }
                 Snow snow = (Snow) Material.SNOW.createBlockData();
                 snow.setLayers(1 + rnd.nextInt(Math.min(2, snow.getMaximumLayers())));
                 above.setBlockData(snow, false);
             }
         }
 
-        if (plugin.getConfig().getBoolean("worldgen.ice.enabled", true)) {
+        if (plugin.getConfig().getBoolean("worldgen.ice.enabled", false)) {
             freezeWater(w, c);
         }
     }
 
-    /** Уся вода в новому чанку стає льодом (від дна до рівня моря включно). Далі IceSystem розтопить її, коли потеплішає. */
+    /** Прибирає рослину і її верхню половину (високі трави, папороті, піони). Без фізики. */
+    private void clearPlant(Block b) {
+        Material t = b.getType();
+        Block up = b.getRelative(0, 1, 0);
+        b.setType(Material.AIR, false);
+        if (up.getType() == t) {
+            up.setType(Material.AIR, false);
+        }
+    }
+
+    /** Уся вода в чанку стає льодом (вмикається worldgen.ice.enabled). Без фізики. */
     private void freezeWater(World w, Chunk c) {
         int maxY = w.getSeaLevel() + 1;
         int minY = w.getMinHeight();
