@@ -35,11 +35,26 @@ public final class ColdSystem implements Runnable {
         long seen;
     }
 
+    /**
+     * Напій: тимчасове тепло (power шарів) на seconds секунд, одна коротка регенерація для видимості в HUD,
+     * одне повідомлення в action bar з часом. Постійного рядка статусу немає.
+     */
+    public void drink(Player p, double seconds, double power) {
+        State st = states.computeIfAbsent(p.getUniqueId(), k -> new State());
+        st.drinkLeft = Math.max(st.drinkLeft, seconds);
+        st.drinkPower = power;
+        p.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 100, 0, false, false, true));
+        int left = (int) Math.round(st.drinkLeft);
+        p.sendActionBar(Component.text(String.format("Напій гріє ще %d:%02d", left / 60, left % 60), NamedTextColor.GOLD));
+    }
+
     private static final class State {
         double exposure;
         double damageTimer;
         double felt = Double.NaN; // температура, яку гравець відчуває (плавно наздоганяє цільову)
         double wet;               // скільки секунд ще мокрий
+        double drinkLeft;         // скільки секунд ще гріє напій
+        double drinkPower;        // скільки «шарів» тепла дає напій (як шкіряна броня = 1)
         int tick;
         final Map<String, Pending> pending = new HashMap<>();
     }
@@ -154,6 +169,14 @@ public final class ColdSystem implements Runnable {
             }
         }
         st.pending.entrySet().removeIf(e -> now - e.getValue().seen > 600_000L);
+
+        // 1.2 Напій: тимчасове тепло, діє лише коли холодно (як грілка)
+        if (st.drinkLeft > 0.0) {
+            if (needed) {
+                warmth += st.drinkPower;
+                st.drinkLeft = Math.max(0.0, st.drinkLeft - DT);
+            }
+        }
 
         // 1.5 Мокрий одяг: у холоді треба більше тепла, але не для металевої броні
         boolean wetNow = st.wet > 0.5;
