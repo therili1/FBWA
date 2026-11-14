@@ -62,6 +62,10 @@ public final class CampfireSystem implements Listener, Runnable {
         if (!plugin.settings().campfireUnlit || !isCampfire(b.getType()) || !plugin.isManaged(b.getWorld())) {
             return;
         }
+        // Підпал кресалом теж шле BlockPlaceEvent на тому ж багатті: це не установка, не скидаємо паливо
+        if (!isCampfire(e.getItemInHand().getType()) || isCampfire(e.getBlockReplacedState().getType())) {
+            return;
+        }
         if (b.getBlockData() instanceof Lightable l && l.isLit()) {
             l.setLit(false);
             b.setBlockData(l, false);
