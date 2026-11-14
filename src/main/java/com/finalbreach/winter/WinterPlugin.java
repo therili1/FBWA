@@ -62,6 +62,14 @@ public final class WinterPlugin extends JavaPlugin implements Listener {
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        // Додаємо до існуючого config.yml нові ключі з дефолтів, не змінюючи значень, які вже є
+        java.io.InputStream defaultsIn = getResource("config.yml");
+        if (defaultsIn != null) {
+            getConfig().setDefaults(org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(
+                    new java.io.InputStreamReader(defaultsIn, java.nio.charset.StandardCharsets.UTF_8)));
+        }
+        getConfig().options().copyDefaults(true);
+        saveConfig();
         settings = Settings.load(getConfig(), getLogger());
         changesFile = new File(getDataFolder(), "changes.yml");
         changesCfg = YamlConfiguration.loadConfiguration(changesFile);
