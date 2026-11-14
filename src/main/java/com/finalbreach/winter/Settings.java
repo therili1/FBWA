@@ -113,6 +113,7 @@ public final class Settings {
     public final double stormRadius;
 
     // грілки
+    public final Set<Material> conductors = new HashSet<>();
     public final int heaterSeconds;
     public final int magmaHeaterSeconds;
     public final int loreUpdate;
@@ -208,6 +209,12 @@ public final class Settings {
         snowParticles = c.getBoolean("snow.particles", true);
         stormParticles = Math.max(1, Math.min(80, c.getInt("snow.storm-particles", 34)));
         stormRadius = Math.max(3.0, Math.min(20.0, c.getDouble("snow.storm-radius", 8.0)));
+        for (String name : c.getStringList("heat.conductors")) {
+            Material mat = Material.matchMaterial(name);
+            if (mat != null) {
+                conductors.add(mat);
+            }
+        }
 
         heaterSeconds = Math.max(10, c.getInt("heater.duration-seconds", 600));
         magmaHeaterSeconds = Math.max(10, c.getInt(\"heater.magma-duration-seconds\", 1800));

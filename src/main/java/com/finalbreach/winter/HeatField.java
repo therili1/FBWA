@@ -51,6 +51,8 @@ public final class HeatField implements Runnable {
     private static final int MAX_CLUSTER = 20;
     private static final int REACH_CAP = 60;
     private static final double FALLOFF_CUTOFF = 0.02;
+    /** Скільки "кроків" втрати дає провідний блок (підлога) порівняно з повітрям (1). */
+    private static final int CONDUCTOR_STEP = 2;
     private static final int MAX_CELLS_CAP = 3000;
     private static final int CHUNK_RADIUS = 2;
 
@@ -424,13 +426,16 @@ public final class HeatField implements Runnable {
                     continue;
                 }
                 Block b = w.getBlockAt(nx, ny, nz);
-                if (b.isPassable() && !b.isLiquid()) {
-                    if (falloff(c[3] + 1, s.heatDecay) < FALLOFF_CUTOFF || dist.size() >= maxCells) {
+                boolean pass = b.isPassable() && !b.isLiquid();
+                boolean conductor = !pass && s.conductors.contains(b.getType());
+                if (pass || conductor) {
+                    int step = pass ? 1 : CONDUCTOR_STEP;
+                    if (falloff(c[3] + step, s.heatDecay) < FALLOFF_CUTOFF || dist.size() >= maxCells) {
                         leak += 1.0; // межа пошуку = "відкритий простір"
                         continue;
                     }
-                    dist.put(key, c[3] + 1);
-                    queue.add(new int[]{nx, ny, nz, c[3] + 1});
+                    dist.put(key, c[3] + step);
+                    queue.add(new int[]{nx, ny, nz, c[3] + step});
                 } else if (!origin) {
                     leak += leakOf(b.getType());
                 }
