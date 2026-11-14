@@ -207,8 +207,8 @@ public final class Settings {
         blizzardMult = Math.max(1.0, c.getDouble("snow.blizzard-multiplier", 2.5));
         meltSamples = Math.max(0, c.getInt("snow.melt-samples-per-second", 30));
         snowParticles = c.getBoolean("snow.particles", true);
-        stormParticles = Math.max(1, Math.min(80, c.getInt("snow.storm-particles", 34)));
-        stormRadius = Math.max(3.0, Math.min(20.0, c.getDouble("snow.storm-radius", 8.0)));
+        stormParticles = Math.max(1, Math.min(300, c.getInt("snow.storm-particles", 120)));
+        stormRadius = Math.max(3.0, Math.min(40.0, c.getDouble("snow.storm-radius", 24.0)));
         for (String name : c.getStringList("heat.conductors")) {
             Material mat = Material.matchMaterial(name);
             if (mat != null) {

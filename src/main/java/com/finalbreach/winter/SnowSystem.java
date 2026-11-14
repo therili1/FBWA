@@ -266,6 +266,15 @@ public final class SnowSystem {
             double radius = storm ? cfg.stormRadius : 14.0;
             double wind = storm ? 0.9 : 0.12;
             Location l = p.getLocation();
+            if (storm) {
+                // Хуртовина: широка хмара снігу над гравцем, видна здалеку. Під дахом не спавнимо.
+                if (w.getHighestBlockYAt(l) > l.getBlockY() + 2) {
+                    continue;
+                }
+                double r = cfg.stormRadius;
+                p.spawnParticle(Particle.SNOWFLAKE, l.getX(), l.getY() + 12.0, l.getZ(), n, r, 5.0, r, 0.0);
+                continue;
+            }
             for (int i = 0; i < n; i++) {
                 double x = l.getX() + (rnd.nextDouble() * 2.0 - 1.0) * radius;
                 double z = l.getZ() + (rnd.nextDouble() * 2.0 - 1.0) * radius;
