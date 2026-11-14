@@ -5,6 +5,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Keyed;
 import org.bukkit.Location;
+import org.bukkit.Registry;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
@@ -83,6 +84,16 @@ public final class Drinks implements Listener {
     private final NamespacedKey kFillRecipe;
 
     private final Map<String, Recipe2> recipes = new LinkedHashMap<>();
+
+    /** Біом -> {ідентифікатор досягнення, критерій}. Видає плагін, коли гравець заходить у біом. */
+    private static final Map<String, String[]> BIOME_AWARDS = Map.of(
+            "minecraft:snowy_plains", new String[]{"snowy_plains", "arrived"},
+            "minecraft:snowy_taiga", new String[]{"white_bear", "done"},
+            "minecraft:snowy_slopes", new String[]{"ice_climber", "done"},
+            "minecraft:ice_spikes", new String[]{"ice_spikes_fan", "done"},
+            "minecraft:frozen_peaks", new String[]{"frozen_peaks_win", "done"},
+            "minecraft:frozen_ocean", new String[]{"frozen_ocean_dip", "done"},
+            "minecraft:snowy_beach", new String[]{"snowy_beach_walk", "done"});
     private final Map<String, Brew> brews = new HashMap<>();
 
     public Drinks(WinterPlugin plugin) {
@@ -354,11 +365,54 @@ public final class Drinks implements Listener {
         brew.items.clear();
     }
 
+    /** Досягнення за біомами: перевіряємо раз на кілька секунд у гравців у керованих світах. */
+    private void biomeAwards() {
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (!plugin.isManaged(p.getWorld())) {
+                continue;
+            }
+            NamespacedKey key = Registry.BIOME.getKey(p.getLocation().getBlock().getBiome());
+            if (key == null) {
+                continue;
+            }
+            String[] adv = BIOME_AWARDS.get(key.toString());
+            if (adv != null) {
+                award(p, adv[0], adv[1]);
+            }
+        }
+    }
+
+    /** Звичайні напої в інвентарі повільно остигають (термос тримає тепло і не остигає). */
+    private void coolInventories() {
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (!plugin.isManaged(p.getWorld())) {
+                continue;
+            }
+            ItemStack[] contents = p.getInventory().getContents();
+            boolean changed = false;
+            for (ItemStack st : contents) {
+                if (st == null || !isDrink(st) || isThermos(st)) {
+                    continue;
+                }
+                int t = getTemp(st);
+                if (t > 0) {
+                    setTemp(st, t - 1);
+                    changed = true;
+                }
+            }
+            if (changed) {
+                p.getInventory().setContents(contents);
+            }
+        }
+    }
+
     // ---------- підігрів сирого напою на землі ----------
 
     /** Викликається кожні 2 секунди: варіння в казані і нагрівання напоїв на землі. */
     public void tick() {
         brewTick();
+        biomeAwards();
+        coolInventories();
         Set<UUID> seen = new HashSet<>();
         for (Player p : Bukkit.getOnlinePlayers()) {
             World w = p.getWorld();

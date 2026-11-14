@@ -173,3 +173,18 @@ drinks:
       ingredients: [FERN, FERN, SWEET_BERRIES, SWEET_BERRIES]
       power: 1.0
       seconds: 150
+    ginger_tea:
+      name: "Імбирний чай"
+      ingredients: [SUGAR_CANE, SUGAR_CANE, HONEY_BOTTLE, GLOW_BERRIES]
+      power: 1.2
+      seconds: 240
+    mulled_wine:
+      name: "Глінтвейн"
+      ingredients: [SWEET_BERRIES, SWEET_BERRIES, SUGAR, BROWN_MUSHROOM]
+      power: 1.5
+      seconds: 120
+    coffee:
+      name: "Кава"
+      ingredients: [COCOA_BEANS, SUGAR, WATER_BUCKET, COCOA_BEANS]
+      power: 0.8
+      seconds: 90
