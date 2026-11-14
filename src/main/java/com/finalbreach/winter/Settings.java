@@ -88,6 +88,7 @@ public final class Settings {
     public final double cooldown;
     public final int heatDistance;
     public final int heatCells;
+    public final double heatDecay;
     public final double reachPerFurnace;
     public final Map<Material, Source> sources;
 
@@ -184,6 +185,7 @@ public final class Settings {
         cooldown = Math.max(1, c.getDouble("heat.cooldown-seconds", 60));
         heatDistance = Math.max(3, Math.min(24, c.getInt("heat.max-distance", 12)));
         heatCells = Math.max(50, Math.min(3000, c.getInt("heat.max-cells", 700)));
+        heatDecay = Math.max(1.0, Math.min(40.0, c.getDouble("heat.decay-blocks", 10.0)));
         reachPerFurnace = Math.max(0, c.getDouble("heat.reach-per-furnace", 3));
         sources = parseSources(c, log);
 

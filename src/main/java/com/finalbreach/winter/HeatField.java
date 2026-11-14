@@ -49,7 +49,8 @@ public final class HeatField implements Runnable {
     private static final double BASE_LOSS = 1.5;
     private static final double VOLUME_LOSS = 0.03;
     private static final int MAX_CLUSTER = 16;
-    private static final int REACH_CAP = 24;
+    private static final int REACH_CAP = 60;
+    private static final double FALLOFF_CUTOFF = 0.02;
     private static final int MAX_CELLS_CAP = 3000;
     private static final int CHUNK_RADIUS = 2;
 
@@ -287,7 +288,12 @@ public final class HeatField implements Runnable {
     }
 
     private static int reachFor(Settings s, int lit) {
-        return (int) Math.min(REACH_CAP, s.heatDistance + s.reachPerFurnace * Math.max(0, lit - 1));
+        return (int) Math.min(REACH_CAP, Math.ceil(s.heatDecay * 4.0));
+    }
+
+    /** Тепло слабшає експоненційно з відстанню по повітрю (перші 2 блоки без втрат). */
+    static double falloff(int d, double decay) {
+        return d <= 2 ? 1.0 : Math.exp(-(d - 2) / decay);
     }
 
     private static double nearest2(Cluster cl, Location loc) {
@@ -410,7 +416,7 @@ public final class HeatField implements Runnable {
                 }
                 Block b = w.getBlockAt(nx, ny, nz);
                 if (b.isPassable() && !b.isLiquid()) {
-                    if (c[3] + 1 > range || dist.size() >= maxCells) {
+                    if (falloff(c[3] + 1, s.heatDecay) < FALLOFF_CUTOFF || dist.size() >= maxCells) {
                         leak += 1.0; // межа пошуку = "відкритий простір"
                         continue;
                     }
@@ -424,11 +430,10 @@ public final class HeatField implements Runnable {
 
         double loss = BASE_LOSS + leak + dist.size() * VOLUME_LOSS;
         double room = cl.power() / loss;
-        double slope = 0.65 / Math.max(1, range - 2);
         Map<Long, Float> out = new HashMap<>(dist.size() * 2);
         for (Map.Entry<Long, Integer> e : dist.entrySet()) {
             int d = e.getValue();
-            double falloff = Math.max(0.35, Math.min(1.0, 1.0 - (d - 2) * slope));
+            double falloff = falloff(d, s.heatDecay);
             double v = room * falloff + cl.radiant() * Math.max(0.0, 1.0 - d / 4.0);
             out.put(e.getKey(), (float) v);
         }
