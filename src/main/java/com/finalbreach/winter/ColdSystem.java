@@ -92,6 +92,17 @@ public final class ColdSystem implements Runnable {
         }
         double temp = st.felt;
 
+        // Вітер: на відкритому місці під час хуртовини температура відчувається нижчою (без тепла від печей)
+        if (local == null || local.heat() < 0.1) {
+            World ww = p.getWorld();
+            var loc = p.getLocation();
+            boolean skyOpen = ww.getHighestBlockYAt(loc) <= loc.getBlockY() + 1;
+            boolean stormNow = plugin.climate(ww).at(ww.getFullTime()).precip() != Climate.Precip.CLEAR;
+            if (skyOpen && stormNow) {
+                temp -= plugin.getConfig().getDouble("wind.chill-degrees", 6.0);
+            }
+        }
+
         // 0.5 Мокрість: у воді - повна, потім сохне (біля вогню і в теплі швидше)
         if (s.wetEnabled) {
             if (p.isInWater()) {

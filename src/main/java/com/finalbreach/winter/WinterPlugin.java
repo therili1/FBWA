@@ -43,6 +43,7 @@ public final class WinterPlugin extends JavaPlugin implements Listener {
     private Settings settings;
     private Heaters heaters;
     private HeatField heat;
+    private IceSystem ice;
     private ColdSystem cold;
     private SnowMarks marks;
     private SnowSystem snow;
@@ -66,6 +67,7 @@ public final class WinterPlugin extends JavaPlugin implements Listener {
 
         heaters = new Heaters(this);
         heat = new HeatField(this);
+        ice = new IceSystem(this, heat);
         cold = new ColdSystem(this, heaters, heat);
         marks = new SnowMarks(this);
         snow = new SnowSystem(this, marks);
@@ -90,6 +92,7 @@ public final class WinterPlugin extends JavaPlugin implements Listener {
         getServer().getScheduler().runTaskTimer(this, campfires, 40L, 20L);
         getServer().getScheduler().runTaskTimer(this, snow::tick, 40L, 20L);
         getServer().getScheduler().runTaskTimer(this, snow::particles, 40L, 4L);
+        getServer().getScheduler().runTaskTimer(this, ice::tick, 60L, 100L);
         getServer().getScheduler().runTaskTimer(this, marks::flushDirty, 6000L, 6000L);
     }
 
