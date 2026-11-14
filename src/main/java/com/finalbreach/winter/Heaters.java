@@ -41,7 +41,7 @@ public final class Heaters {
         List<Material> out = new ArrayList<>();
         for (Material m : Material.values()) {
             String n = m.name();
-            if (n.startsWith("LEGACY_") || isLeather(m)) {
+            if (n.startsWith("LEGACY_")) {
                 continue;
             }
             if (n.endsWith("_HELMET") || n.endsWith("_CHESTPLATE")
