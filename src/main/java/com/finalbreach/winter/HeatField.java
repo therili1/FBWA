@@ -75,6 +75,7 @@ public final class HeatField implements Runnable {
         int oz;
         int reach;
         Map<Long, Float> cells;
+        double leak;
     }
 
     private final WinterPlugin plugin;
@@ -82,6 +83,7 @@ public final class HeatField implements Runnable {
     private final Map<UUID, Local> locals = new HashMap<>();
     private final Map<UUID, Map<Long, Long>> scanned = new HashMap<>();
     private long cycle;
+    private double lastLeak;
 
     public HeatField(WinterPlugin plugin) {
         this.plugin = plugin;
@@ -225,6 +227,7 @@ public final class HeatField implements Runnable {
                     }
                     if (cl.lit() > 0 && (n.cells == null || n.builtLit != cl.lit() || now - n.builtAt > REBUILD_NANOS)) {
                         n.cells = spread(w, cl, s);
+                        n.leak = lastLeak;
                         n.builtAt = now;
                         n.builtLit = cl.lit();
                         n.ox = cl.members().get(0)[0];
@@ -253,7 +256,8 @@ public final class HeatField implements Runnable {
             n.power = lit ? 1.0 : 0.0;
         } else {
             double dt = Math.max(0.1, (now - n.updated) / 1e9);
-            double tau = lit ? s.warmup : s.cooldown;
+            // Закрите приміщення (малий leak) тримає тепло довше; відкрите остигає майже за base cooldown.
+            double tau = lit ? s.warmup : s.cooldown * (1.0 + (s.sealedFactor - 1.0) / (1.0 + n.leak));
             n.power += ((lit ? 1.0 : 0.0) - n.power) * (1.0 - Math.exp(-dt / tau));
         }
         n.updated = now;
@@ -428,6 +432,7 @@ public final class HeatField implements Runnable {
             }
         }
 
+        lastLeak = leak;
         double loss = BASE_LOSS + leak + dist.size() * VOLUME_LOSS;
         double room = cl.power() / loss;
         Map<Long, Float> out = new HashMap<>(dist.size() * 2);
