@@ -73,6 +73,7 @@ public final class WinterPlugin extends JavaPlugin implements Listener {
         registerRecipe();
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getPluginManager().registerEvents(campfires, this);
+        getServer().getPluginManager().registerEvents(new WorldSnow(this), this);
         getServer().getPluginManager().registerEvents(new Greenhouse(this), this);
 
         PluginCommand cmd = getCommand("forecast");
