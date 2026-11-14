@@ -86,7 +86,7 @@ public final class Settings {
     public final int heatEvery;
     public final double warmup;
     public final double cooldown;
-    public final double sealedFactor;
+    public final double sealedCooldown;
     public final int heatDistance;
     public final int heatCells;
     public final double heatDecay;
@@ -183,8 +183,8 @@ public final class Settings {
         caveBonus = Math.max(0, c.getDouble("shelter.cave-bonus", 14));
         heatEvery = Math.max(1, c.getInt("heat.update-seconds", 2));
         warmup = Math.max(1, c.getDouble("heat.warmup-seconds", 30));
-        cooldown = Math.max(1, c.getDouble("heat.cooldown-seconds", 20));
-        sealedFactor = Math.max(1.0, Math.min(60.0, c.getDouble("heat.sealed-cooldown-factor", 30.0)));
+        cooldown = Math.max(1, c.getDouble("heat.cooldown-seconds", 40));
+        sealedCooldown = Math.max(cooldown, c.getDouble("heat.sealed-cooldown-seconds", 1200));
         heatDistance = Math.max(3, Math.min(24, c.getInt("heat.max-distance", 12)));
         heatCells = Math.max(50, Math.min(3000, c.getInt("heat.max-cells", 700)));
         heatDecay = Math.max(1.0, Math.min(40.0, c.getDouble("heat.decay-blocks", 10.0)));

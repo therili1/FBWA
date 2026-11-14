@@ -257,8 +257,13 @@ public final class HeatField implements Runnable {
         } else {
             double dt = Math.max(0.1, (now - n.updated) / 1e9);
             // Закрите приміщення (малий leak) тримає тепло довше; відкрите остигає майже за base cooldown.
-            double tau = lit ? s.warmup : s.cooldown * (1.0 + (s.sealedFactor - 1.0) / (1.0 + n.leak));
-            n.power += ((lit ? 1.0 : 0.0) - n.power) * (1.0 - Math.exp(-dt / tau));
+            if (lit) {
+                n.power += (1.0 - n.power) * (1.0 - Math.exp(-dt / s.warmup));
+            } else {
+                // Лінійне остигання до нуля: закрите (leak≈0) — sealedCooldown, відкрите — cooldown.
+                double t = s.cooldown + (s.sealedCooldown - s.cooldown) / (1.0 + n.leak);
+                n.power = Math.max(0.0, n.power - dt / t);
+            }
         }
         n.updated = now;
     }
