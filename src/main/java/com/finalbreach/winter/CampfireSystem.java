@@ -195,9 +195,24 @@ public final class CampfireSystem implements Listener, Runnable {
 
     // ---------- паливо в блоці ----------
 
+    /** Паливо в пам'яті сервера: переживає запалення, якщо PDC на блоці втрачається. */
+    private final java.util.Map<String, Integer> fuelCache = new java.util.HashMap<>();
+
+    private static String cacheKey(Block b) {
+        return b.getWorld().getUID() + ":" + b.getX() + "," + b.getY() + "," + b.getZ();
+    }
+
     private Integer readStored(Block b) {
+        Integer cached = fuelCache.get(cacheKey(b));
+        if (cached != null) {
+            return cached;
+        }
         if (b.getState(false) instanceof TileState ts) {
-            return ts.getPersistentDataContainer().get(fuelKey, PersistentDataType.INTEGER);
+            Integer v = ts.getPersistentDataContainer().get(fuelKey, PersistentDataType.INTEGER);
+            if (v != null) {
+                fuelCache.put(cacheKey(b), v);
+            }
+            return v;
         }
         return null;
     }
@@ -209,6 +224,7 @@ public final class CampfireSystem implements Listener, Runnable {
 
     /** Завжди беремо свіжий знімок стану, щоб не перезаписати вже змінений lit. */
     private void writeFuel(Block b, int seconds) {
+        fuelCache.put(cacheKey(b), Math.max(0, seconds));
         // TileState.update() перезаписує блок даними зі знімка, тож запам'ятовуємо живий стан
         // (запалене/погашене) і повертаємо його, якщо знімок його змінив.
         BlockData live = b.getBlockData();
