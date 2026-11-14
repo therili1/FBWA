@@ -6,10 +6,13 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
- * Лід наростає від берегів: замерзає смуга води біля суші (ice.shore-depth блоків),
- * глибина лишається рідкою. Тане, коли потепліло або поруч тепло котельні.
- * Сканує колонки (без пропусків) лише навколо гравців.
+ * Лід наростає фронтом від берега: за кожен цикл холоду замерзає один шар води,
+ * який стикається з льодом або сушею. Так річка замерзає поступово, від берегів до середини.
+ * Тане, коли потеплішає або поруч тепло котельні. Сканує лише ділянки навколо гравців.
  */
 public final class IceSystem {
 
@@ -29,10 +32,9 @@ public final class IceSystem {
         double freeze = cfg.getDouble("ice.freeze-below", -5.0);
         double thaw = cfg.getDouble("ice.thaw-above", 0.0);
         int radius = Math.max(4, cfg.getInt("ice.radius", 20));
-        int depth = Math.max(1, cfg.getInt("ice.shore-depth", 5));
         int cap = Math.max(20, cfg.getInt("ice.max-per-tick", 300));
 
-        int changed = 0;
+        List<Block> toFreeze = new ArrayList<>();
         for (Player p : plugin.getServer().getOnlinePlayers()) {
             World w = p.getWorld();
             if (!plugin.isManaged(w)) {
@@ -40,42 +42,38 @@ public final class IceSystem {
             }
             int px = p.getLocation().getBlockX();
             int pz = p.getLocation().getBlockZ();
-            for (int x = px - radius; x <= px + radius && changed < cap; x++) {
-                for (int z = pz - radius; z <= pz + radius && changed < cap; z++) {
+            for (int x = px - radius; x <= px + radius; x++) {
+                for (int z = pz - radius; z <= pz + radius; z++) {
                     int y = w.getHighestBlockYAt(x, z, HeightMap.WORLD_SURFACE);
                     Block b = w.getBlockAt(x, y, z);
                     Material m = b.getType();
                     if (m == Material.WATER) {
-                        if (!nearShore(w, x, z, depth)) {
-                            continue;
-                        }
-                        if (heat.growthTemp(b) < freeze) {
-                            b.setType(Material.ICE, false);
-                            changed++;
+                        if (toFreeze.size() < cap && isFrontier(w, x, z) && heat.growthTemp(b) < freeze) {
+                            toFreeze.add(b);
                         }
                     } else if (m == Material.ICE) {
                         if (heat.growthTemp(b) > thaw) {
                             b.setType(Material.WATER, false);
-                            changed++;
                         }
                     }
                 }
             }
         }
+        // Заморожуємо всі кандидати одночасно, щоб за один цикл не замерзало більше одного шару.
+        for (Block b : toFreeze) {
+            b.setType(Material.ICE, false);
+        }
     }
 
-    /** Чи є суша (не вода і не лід) у межах depth блоків по будь-якому з чотирьох напрямків. */
-    private boolean nearShore(World w, int x, int z, int depth) {
+    /** Вода на межі: поруч (по сторонах світу) є лід або суша, а не вода. */
+    private boolean isFrontier(World w, int x, int z) {
         int[][] dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
         for (int[] d : dirs) {
-            for (int k = 1; k <= depth; k++) {
-                int nx = x + d[0] * k;
-                int nz = z + d[1] * k;
-                int ny = w.getHighestBlockYAt(nx, nz, HeightMap.WORLD_SURFACE);
-                Material m = w.getBlockAt(nx, ny, nz).getType();
-                if (m != Material.WATER && m != Material.ICE) {
-                    return true;
-                }
+            int nx = x + d[0];
+            int nz = z + d[1];
+            int ny = w.getHighestBlockYAt(nx, nz, HeightMap.WORLD_SURFACE);
+            if (w.getBlockAt(nx, ny, nz).getType() != Material.WATER) {
+                return true;
             }
         }
         return false;
