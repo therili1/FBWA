@@ -217,7 +217,7 @@ public final class Settings {
         }
 
         heaterSeconds = Math.max(10, c.getInt("heater.duration-seconds", 600));
-        magmaHeaterSeconds = Math.max(10, c.getInt(\"heater.magma-duration-seconds\", 1800));
+        magmaHeaterSeconds = Math.max(10, c.getInt("heater.magma-duration-seconds", 1800));
         loreUpdate = Math.max(1, c.getInt("heater.lore-update-seconds", 30));
         discoverRecipe = c.getBoolean("heater.discover-recipe-on-join", true);
     }
