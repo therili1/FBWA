@@ -107,6 +107,8 @@ public final class Settings {
     public final double blizzardMult;
     public final int meltSamples;
     public final boolean snowParticles;
+    public final int stormParticles;
+    public final double stormRadius;
 
     // грілки
     public final int heaterSeconds;
@@ -199,6 +201,8 @@ public final class Settings {
         blizzardMult = Math.max(1.0, c.getDouble("snow.blizzard-multiplier", 2.5));
         meltSamples = Math.max(0, c.getInt("snow.melt-samples-per-second", 30));
         snowParticles = c.getBoolean("snow.particles", true);
+        stormParticles = Math.max(1, Math.min(80, c.getInt("snow.storm-particles", 34)));
+        stormRadius = Math.max(3.0, Math.min(20.0, c.getDouble("snow.storm-radius", 8.0)));
 
         heaterSeconds = Math.max(10, c.getInt("heater.duration-seconds", 600));
         loreUpdate = Math.max(1, c.getInt("heater.lore-update-seconds", 30));

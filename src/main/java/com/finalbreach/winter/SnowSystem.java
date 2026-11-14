@@ -261,12 +261,14 @@ public final class SnowSystem {
                 continue;
             }
             boolean storm = pr == Climate.Precip.BLIZZARD;
-            int n = storm ? 26 : 9;
+            Settings cfg = plugin.settings();
+            int n = storm ? cfg.stormParticles : 9;
+            double radius = storm ? cfg.stormRadius : 14.0;
             double wind = storm ? 0.9 : 0.12;
             Location l = p.getLocation();
             for (int i = 0; i < n; i++) {
-                double x = l.getX() + (rnd.nextDouble() * 2.0 - 1.0) * 14.0;
-                double z = l.getZ() + (rnd.nextDouble() * 2.0 - 1.0) * 14.0;
+                double x = l.getX() + (rnd.nextDouble() * 2.0 - 1.0) * radius;
+                double z = l.getZ() + (rnd.nextDouble() * 2.0 - 1.0) * radius;
                 int bx = (int) Math.floor(x);
                 int bz = (int) Math.floor(z);
                 if (!w.isChunkLoaded(bx >> 4, bz >> 4)) {
