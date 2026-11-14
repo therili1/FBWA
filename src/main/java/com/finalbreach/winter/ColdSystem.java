@@ -192,15 +192,39 @@ public final class ColdSystem implements Runnable {
             }
         }
         if (s.actionbar && (st.tick++ % 4) == 0) {
-            String text = needed
-                    ? String.format(Locale.US, "Температура: %d°C   Тепло: %.1f / %.1f",
-                            Math.round(temp), warmth, required)
-                    : String.format(Locale.US, "Температура: %d°C   Комфортно", Math.round(temp));
-            if (wetNow) {
-                text += "   Мокрий";
-            }
-            p.sendActionBar(Component.text(text, deficit > 0.001 ? NamedTextColor.RED : NamedTextColor.GREEN));
+            p.sendActionBar(statusLine(temp, warmth, required, needed, deficit, wetNow));
         }
+    }
+
+    /**
+     * Рядок над хотбаром: температура з кольором, смужка тепла (■ набрано, □ ні) і статус.
+     * Колір температури: синій холод, білий нейтрально, жовтий тепло. Смужка зелена, коли тепла вистачає.
+     */
+    static Component statusLine(double temp, double warmth, double required, boolean needed,
+                                double deficit, boolean wet) {
+        int t = (int) Math.round(temp);
+        NamedTextColor tc = t <= -10 ? NamedTextColor.AQUA
+                : t <= 5 ? NamedTextColor.WHITE : NamedTextColor.YELLOW;
+        Component line = Component.text("❄ ", NamedTextColor.DARK_AQUA)
+                .append(Component.text(t + "°C", tc));
+
+        if (needed && required > 0.0) {
+            int cells = 10;
+            int filled = (int) Math.max(0, Math.min(cells, Math.round(warmth / required * cells)));
+            boolean ok = deficit <= 0.001;
+            NamedTextColor barColor = ok ? NamedTextColor.GREEN : NamedTextColor.RED;
+            line = line.append(Component.text("   "))
+                    .append(Component.text("■".repeat(filled), barColor))
+                    .append(Component.text("□".repeat(cells - filled), NamedTextColor.DARK_GRAY))
+                    .append(Component.text(String.format(Locale.US, "  %.1f/%.1f", warmth, required), NamedTextColor.GRAY));
+        } else {
+            line = line.append(Component.text("   ✔ Комфортно", NamedTextColor.GREEN));
+        }
+
+        if (wet) {
+            line = line.append(Component.text("   ● Мокрий", NamedTextColor.BLUE));
+        }
+        return line;
     }
 
     /** Метал і панцир: вода стікає, броня не мокне. */
