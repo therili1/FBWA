@@ -1,0 +1,22 @@
+name: FinalBreachWinter
+version: ${project.version}
+main: com.finalbreach.winter.WinterPlugin
+api-version: '26.3'
+description: Зимова система - температура, прогноз, холод, тепло від вогню, сніг і грілки
+authors: [FinalBreach]
+commands:
+  forecast:
+    description: Прогноз температури та опадів
+    usage: /forecast
+    permission: finalbreach.forecast.use
+    permission-message: Немає прав на цю команду.
+permissions:
+  finalbreach.forecast.use:
+    description: Дозволяє дивитися /forecast
+    default: true
+  finalbreach.winter.admin:
+    description: /forecast change, here, override, reload
+    default: op
+  finalbreach.winter.immune:
+    description: Імунітет до холоду
+    default: false
