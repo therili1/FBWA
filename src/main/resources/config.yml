@@ -154,4 +154,4 @@ ice:
 # Власний білий список (/wl). Ніки в plugins/FinalBreachWinter/whitelist.txt
 access:
   enabled: true
-  message: "Пройдіть реєстрацію у discord.gg/fb"
+  message: "Пройдіть реєстрацію у https://discord.gg/dX5AdDfC8q"

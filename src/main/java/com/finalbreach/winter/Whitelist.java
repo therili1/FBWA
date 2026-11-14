@@ -50,7 +50,7 @@ public final class Whitelist implements Listener, CommandExecutor {
         if (names.contains(e.getName().toLowerCase(Locale.ROOT))) {
             return;
         }
-        String msg = plugin.getConfig().getString("access.message", "Пройдіть реєстрацію у discord.gg/fb");
+        String msg = plugin.getConfig().getString("access.message", "Пройдіть реєстрацію у https://discord.gg/dX5AdDfC8q");
         e.disallow(AsyncPlayerPreLoginEvent.Result.KICK_WHITELIST, Component.text(msg, NamedTextColor.RED));
     }
 
