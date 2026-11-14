@@ -246,6 +246,14 @@ public final class CampfireSystem implements Listener, Runnable {
 
     /** Завжди беремо свіжий знімок стану, щоб не перезаписати вже змінений lit. */
     private void writeFuel(Block b, int seconds) {
+        if (seconds <= 0 && plugin.getConfig().getBoolean("campfire.debug", false)) {
+            StringBuilder sb = new StringBuilder("[campfire] writeFuel(0) at " + b.getX() + "," + b.getY() + "," + b.getZ() + " from:");
+            StackTraceElement[] st = Thread.currentThread().getStackTrace();
+            for (int i = 2; i < Math.min(st.length, 9); i++) {
+                sb.append(" <- ").append(st[i].getClassName().replaceAll(".*\\.", "")).append('.').append(st[i].getMethodName()).append(':').append(st[i].getLineNumber());
+            }
+            plugin.getLogger().info(sb.toString());
+        }
         fuelCache.put(cacheKey(b), Math.max(0, seconds));
         // TileState.update() перезаписує блок даними зі знімка, тож запам'ятовуємо живий стан
         // (запалене/погашене) і повертаємо його, якщо знімок його змінив.
