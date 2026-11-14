@@ -70,5 +70,27 @@ public final class WorldSnow implements Listener {
                 above.setBlockData(snow, false);
             }
         }
+
+        if (plugin.getConfig().getBoolean("worldgen.ice.enabled", true)) {
+            freezeWater(w, c);
+        }
+    }
+
+    /** Уся вода в новому чанку стає льодом (від дна до рівня моря включно). Далі IceSystem розтопить її, коли потеплішає. */
+    private void freezeWater(World w, Chunk c) {
+        int maxY = w.getSeaLevel() + 1;
+        int minY = w.getMinHeight();
+        for (int dx = 0; dx < 16; dx++) {
+            for (int dz = 0; dz < 16; dz++) {
+                int x = (c.getX() << 4) + dx;
+                int z = (c.getZ() << 4) + dz;
+                for (int y = maxY; y >= minY; y--) {
+                    Block b = w.getBlockAt(x, y, z);
+                    if (b.getType() == Material.WATER) {
+                        b.setType(Material.ICE, false);
+                    }
+                }
+            }
+        }
     }
 }
