@@ -4,12 +4,15 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Keyed;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
+import org.bukkit.advancement.Advancement;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.data.Lightable;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
@@ -28,46 +31,114 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
 /**
- * Напої: сирий гарячий шоколад (нагрівається на запалених печах), багатогаразовий термос.
- * Температура напою в PDC предмета (0..100). На запаленій печі за ~10 с до 100, на землі повільно остигає.
+ * Напої: казан над багаттям (варіння за рецептами з конфігу), термос на порції,
+ * сирий шоколад, що нагрівається на печах. Температура в PDC предмета (0..100).
  */
 public final class Drinks implements Listener {
 
-    /** Мінімальна температура, з якої напій можна налити в термос. */
-    static final int HOT_MIN = 40;
+    private static final class Recipe2 {
+        final String type;
+        final String name;
+        final List<Material> ingredients;
+        final double power;
+        final int seconds;
+
+        Recipe2(String type, String name, List<Material> ingredients, double power, int seconds) {
+            this.type = type;
+            this.name = name;
+            this.ingredients = ingredients;
+            this.power = power;
+            this.seconds = seconds;
+        }
+    }
+
+    private static final class Brew {
+        final Location loc;
+        final List<Material> items = new ArrayList<>();
+        double progress;
+
+        Brew(Location loc) {
+            this.loc = loc;
+        }
+    }
 
     private final WinterPlugin plugin;
     private final NamespacedKey kType;
     private final NamespacedKey kTemp;
     private final NamespacedKey kThermos;
+    private final NamespacedKey kSips;
     private final NamespacedKey kRawRecipe;
     private final NamespacedKey kThermosRecipe;
     private final NamespacedKey kFillRecipe;
+
+    private final Map<String, Recipe2> recipes = new LinkedHashMap<>();
+    private final Map<String, Brew> brews = new HashMap<>();
 
     public Drinks(WinterPlugin plugin) {
         this.plugin = plugin;
         this.kType = new NamespacedKey(plugin, "drink_type");
         this.kTemp = new NamespacedKey(plugin, "drink_temp");
         this.kThermos = new NamespacedKey(plugin, "thermos");
+        this.kSips = new NamespacedKey(plugin, "thermos_sips");
         this.kRawRecipe = new NamespacedKey(plugin, "raw_hot_chocolate");
         this.kThermosRecipe = new NamespacedKey(plugin, "thermos_empty");
         this.kFillRecipe = new NamespacedKey(plugin, "thermos_fill");
     }
 
     public void register() {
+        loadRecipes();
         Bukkit.addRecipe(rawRecipe());
         Bukkit.addRecipe(thermosRecipe());
         Bukkit.addRecipe(fillRecipe());
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
     }
 
-    // ---------- рецепти ----------
+    private void loadRecipes() {
+        recipes.clear();
+        ConfigurationSection sec = plugin.getConfig().getConfigurationSection("drinks.recipes");
+        if (sec == null) {
+            return;
+        }
+        for (String type : sec.getKeys(false)) {
+            ConfigurationSection r = sec.getConfigurationSection(type);
+            if (r == null) {
+                continue;
+            }
+            List<Material> ing = new ArrayList<>();
+            for (String m : r.getStringList("ingredients")) {
+                Material mat = Material.matchMaterial(m);
+                if (mat != null) {
+                    ing.add(mat);
+                }
+            }
+            if (ing.isEmpty()) {
+                continue;
+            }
+            recipes.put(type, new Recipe2(type, r.getString("name", type), ing,
+                    r.getDouble("power", 1.0), r.getInt("seconds", 180)));
+        }
+    }
+
+    private int sipsMax() {
+        return Math.max(1, plugin.getConfig().getInt("drinks.sips", 4));
+    }
+
+    private int fillMinTemp() {
+        return plugin.getConfig().getInt("drinks.fill-min-temp", 40);
+    }
+
+    // ---------- рецепти крафту ----------
 
     private ShapelessRecipe rawRecipe() {
         ShapelessRecipe r = new ShapelessRecipe(kRawRecipe, makeDrink("hot_chocolate", 0));
@@ -87,7 +158,6 @@ public final class Drinks implements Listener {
     }
 
     private ShapelessRecipe fillRecipe() {
-        // Результат підставляється в PrepareItemCraftEvent залежно від температури напою
         ShapelessRecipe r = new ShapelessRecipe(kFillRecipe, emptyThermos());
         r.addIngredient(Material.FLOWER_POT);
         r.addIngredient(Material.HONEY_BOTTLE);
@@ -125,19 +195,22 @@ public final class Drinks implements Listener {
         int temp = getTemp(source);
         ItemMeta m = it.getItemMeta();
         m.displayName(Component.text("Термос: " + displayName(type), NamedTextColor.AQUA));
+        m.setCustomModelData(1003);
         PersistentDataContainer c = m.getPersistentDataContainer();
         c.set(kType, PersistentDataType.STRING, type);
         c.set(kTemp, PersistentDataType.INTEGER, temp);
+        c.set(kSips, PersistentDataType.INTEGER, sipsMax());
         it.setItemMeta(m);
         refreshLore(it);
         return it;
     }
 
-    private static String displayName(String type) {
-        return switch (type) {
-            case "hot_chocolate" -> "Гарячий шоколад";
-            default -> type;
-        };
+    private String displayName(String type) {
+        Recipe2 r = recipes.get(type);
+        if (r != null) {
+            return r.name;
+        }
+        return "hot_chocolate".equals(type) ? "Гарячий шоколад" : type;
     }
 
     public boolean isDrink(ItemStack it) {
@@ -155,6 +228,11 @@ public final class Drinks implements Listener {
         return v == null ? 0 : v;
     }
 
+    private int getSips(ItemStack it) {
+        Integer v = it.getItemMeta().getPersistentDataContainer().get(kSips, PersistentDataType.INTEGER);
+        return v == null ? 0 : v;
+    }
+
     private void setTemp(ItemStack it, int temp) {
         ItemMeta m = it.getItemMeta();
         m.getPersistentDataContainer().set(kTemp, PersistentDataType.INTEGER, temp);
@@ -167,14 +245,120 @@ public final class Drinks implements Listener {
             return;
         }
         ItemMeta m = it.getItemMeta();
-        m.lore(List.of(Component.text("Температура: " + getTemp(it) + "°C", NamedTextColor.GRAY)));
+        List<Component> lore = new ArrayList<>();
+        lore.add(Component.text("Температура: " + getTemp(it) + "°C", NamedTextColor.GRAY));
+        if (isThermos(it)) {
+            lore.add(Component.text("Ковтків: " + getSips(it) + "/" + sipsMax(), NamedTextColor.GRAY));
+        }
+        m.lore(lore);
         it.setItemMeta(m);
     }
 
-    // ---------- підігрів і остигання ----------
+    // ---------- казан: варіння над багаттям ----------
 
-    /** Викликається кожні 2 секунди: напої на запалених печах гріються, на землі повільно остигають. */
+    private boolean isIngredient(Material mat) {
+        for (Recipe2 r : recipes.values()) {
+            if (r.ingredients.contains(mat)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Recipe2 matchRecipe(List<Material> items) {
+        List<String> have = items.stream().map(Enum::name).sorted().toList();
+        for (Recipe2 r : recipes.values()) {
+            List<String> need = r.ingredients.stream().map(Enum::name).sorted().toList();
+            if (need.equals(have)) {
+                return r;
+            }
+        }
+        return null;
+    }
+
+    private static boolean fireBelow(Block cauldron) {
+        Block below = cauldron.getRelative(0, -1, 0);
+        Material m = below.getType();
+        return (m == Material.CAMPFIRE || m == Material.SOUL_CAMPFIRE)
+                && below.getBlockData() instanceof Lightable l && l.isLit();
+    }
+
+    @EventHandler
+    public void onCauldronClick(PlayerInteractEvent e) {
+        if (e.getHand() != EquipmentSlot.HAND || e.getAction() != Action.RIGHT_CLICK_BLOCK) {
+            return;
+        }
+        Block b = e.getClickedBlock();
+        if (b == null || b.getType() != Material.CAULDRON) {
+            return;
+        }
+        ItemStack hand = e.getItem();
+        if (hand == null || hand.getType().isAir() || isDrink(hand) || isThermos(hand)) {
+            return;
+        }
+        if (!isIngredient(hand.getType())) {
+            return;
+        }
+        Player p = e.getPlayer();
+        e.setCancelled(true);
+        String key = locKey(b.getLocation());
+        Brew brew = brews.computeIfAbsent(key, k -> new Brew(b.getLocation()));
+        int max = plugin.getConfig().getInt("drinks.max-ingredients", 4);
+        if (brew.items.size() >= max) {
+            p.sendActionBar(Component.text("Казан повний: " + max + "/" + max, NamedTextColor.RED));
+            return;
+        }
+        brew.items.add(hand.getType());
+        consumeOne(p, EquipmentSlot.HAND);
+        p.sendActionBar(Component.text("В казані: " + brew.items.size + "/" + max, NamedTextColor.GOLD));
+    }
+
+    private static String locKey(Location l) {
+        return l.getWorld().getUID() + ":" + l.getBlockX() + "," + l.getBlockY() + "," + l.getBlockZ();
+    }
+
+    private void brewTick() {
+        int brewSeconds = plugin.getConfig().getInt("drinks.brew-seconds", 20);
+        Iterator<Brew> it = brews.values().iterator();
+        while (it.hasNext()) {
+            Brew brew = it.next();
+            Block b = brew.loc.getBlock();
+            if (b.getType() != Material.CAULDRON) {
+                dropItems(brew);
+                it.remove();
+                continue;
+            }
+            if (!fireBelow(b)) {
+                continue; // без вогню не варимо
+            }
+            brew.progress += 2;
+            if (brew.progress < brewSeconds) {
+                continue;
+            }
+            Recipe2 r = matchRecipe(brew.items);
+            Location drop = brew.loc.clone().add(0.5, 1.0, 0.5);
+            if (r != null) {
+                brew.loc.getWorld().dropItemNaturally(drop, makeDrink(r.type, 90));
+            } else {
+                dropItems(brew);
+            }
+            it.remove();
+        }
+    }
+
+    private void dropItems(Brew brew) {
+        Location drop = brew.loc.clone().add(0.5, 1.0, 0.5);
+        for (Material m : brew.items) {
+            brew.loc.getWorld().dropItemNaturally(drop, new ItemStack(m));
+        }
+        brew.items.clear();
+    }
+
+    // ---------- підігрів сирого напою на землі ----------
+
+    /** Викликається кожні 2 секунди: варіння в казані і нагрівання напоїв на землі. */
     public void tick() {
+        brewTick();
         Set<UUID> seen = new HashSet<>();
         for (Player p : Bukkit.getOnlinePlayers()) {
             World w = p.getWorld();
@@ -214,11 +398,25 @@ public final class Drinks implements Listener {
 
     // ---------- пиття ----------
 
-    /** Ефект напою: тепло в шарах (як шкіряна броня) залежно від температури і таймер. */
+    /** Ефект напою: сила і тривалість з рецепту, сила масштабується температурою. */
     private void effect(Player p, ItemStack it) {
         int t = getTemp(it);
-        double power = 1.0 + 2.0 * t / 100.0;
-        plugin.coldSystem().drink(p, 180, power);
+        String type = it.getItemMeta().getPersistentDataContainer().get(kType, PersistentDataType.STRING);
+        Recipe2 r = type == null ? null : recipes.get(type);
+        double base = r != null ? r.power : 1.0;
+        int seconds = r != null ? r.seconds : 180;
+        double scale = 0.4 + 0.6 * t / 100.0;
+        plugin.coldSystem().drink(p, seconds, base * scale);
+        if ("hot_chocolate".equals(type)) {
+            award(p, "hot_chocolate", "drank");
+        }
+    }
+
+    private void award(Player p, String advancementId, String criterion) {
+        Advancement adv = Bukkit.getAdvancement(new NamespacedKey("fbwinter", advancementId));
+        if (adv != null) {
+            p.getAdvancementProgress(adv).awardCriteria(criterion);
+        }
     }
 
     @EventHandler
@@ -227,18 +425,17 @@ public final class Drinks implements Listener {
         if (!isDrink(it)) {
             return;
         }
-        // Ванільне пиття скасовуємо: їсти/пити будемо самі, щоб не давало ванільного ефекту
-        e.setCancelled(true);
+        e.setCancelled(true); // ванільне пиття скасовуємо, ефект даємо самі
         Player p = e.getPlayer();
-        EquipmentSlot hand = e.getHand();
         effect(p, it);
-        consumeOne(p, hand);
+        consumeOne(p, e.getHand());
         p.getInventory().addItem(new ItemStack(Material.GLASS_BOTTLE)).values()
                 .forEach(left -> p.getWorld().dropItemNaturally(p.getLocation(), left));
     }
 
     private void consumeOne(Player p, EquipmentSlot hand) {
-        ItemStack held = hand == EquipmentSlot.OFF_HAND ? p.getInventory().getItemInOffHand() : p.getInventory().getItemInMainHand();
+        ItemStack held = hand == EquipmentSlot.OFF_HAND
+                ? p.getInventory().getItemInOffHand() : p.getInventory().getItemInMainHand();
         if (held.getAmount() > 1) {
             held.setAmount(held.getAmount() - 1);
         } else {
@@ -251,7 +448,7 @@ public final class Drinks implements Listener {
         }
     }
 
-    /** Термос: ПКМ п'є напій (термос лишається, стає порожнім). Порожній термос не ставиться як горщик. */
+    /** Термос: ПКМ п'є один ковток, порції зменшуються; термос порожній після останнього ковтка. */
     @EventHandler
     public void onThermosUse(PlayerInteractEvent e) {
         if (e.getHand() != EquipmentSlot.HAND) {
@@ -264,13 +461,22 @@ public final class Drinks implements Listener {
         if (!isThermos(it)) {
             return;
         }
-        e.setCancelled(true);
+        e.setCancelled(true); // термос не ставиться як горщик
         if (!isDrink(it)) {
             return;
         }
         Player p = e.getPlayer();
         effect(p, it);
-        p.getInventory().setItemInMainHand(emptyThermos());
+        int left = getSips(it) - 1;
+        if (left <= 0) {
+            p.getInventory().setItemInMainHand(emptyThermos());
+        } else {
+            ItemMeta m = it.getItemMeta();
+            m.getPersistentDataContainer().set(kSips, PersistentDataType.INTEGER, left);
+            it.setItemMeta(m);
+            refreshLore(it);
+            p.getInventory().setItemInMainHand(it);
+        }
     }
 
     // ---------- наповнення термоса через крафт ----------
@@ -293,7 +499,7 @@ public final class Drinks implements Listener {
                 drink = it;
             }
         }
-        if (thermos == null || drink == null || getTemp(drink) < HOT_MIN) {
+        if (thermos == null || drink == null || getTemp(drink) < fillMinTemp()) {
             e.getInventory().setResult(null);
             return;
         }

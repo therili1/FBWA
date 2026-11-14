@@ -155,3 +155,21 @@ ice:
 access:
   enabled: true
   message: "Пройдіть реєстрацію у https://discord.gg/dX5AdDfC8q"
+
+# Напої: варіння в казані над багаттям (рецепти нижче), термос на порції
+drinks:
+  sips: 4                      # ковтків у термосі
+  fill-min-temp: 40            # мінімальна температура напою, щоб налити в термос
+  brew-seconds: 20             # скільки секунд варити над запаленим багаттям
+  max-ingredients: 4           # скільки інгредієнтів у казані
+  recipes:
+    hot_chocolate:
+      name: "Гарячий шоколад"
+      ingredients: [MILK_BUCKET, COCOA_BEANS, COCOA_BEANS, SUGAR]
+      power: 2.0               # шарів тепла при питті (як шкіряна броня = 1)
+      seconds: 180             # скільки тримає тепло
+    herbal_tea:
+      name: "Трав'яний чай"
+      ingredients: [FERN, FERN, SWEET_BERRIES, SWEET_BERRIES]
+      power: 1.0
+      seconds: 150
