@@ -48,7 +48,7 @@ public final class HeatField implements Runnable {
     private static final long FORGET_NANOS = 120_000_000_000L;
     private static final double BASE_LOSS = 1.5;
     private static final double VOLUME_LOSS = 0.03;
-    private static final int MAX_CLUSTER = 16;
+    private static final int MAX_CLUSTER = 20;
     private static final int REACH_CAP = 60;
     private static final double FALLOFF_CUTOFF = 0.02;
     private static final int MAX_CELLS_CAP = 3000;
