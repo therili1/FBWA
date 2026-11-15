@@ -35,6 +35,25 @@ public final class SnowSystem {
     private final SnowMarks marks;
     private final Random rnd = new Random();
     private final Set<UUID> forced = new HashSet<>();
+    /** Live-налаштування хуртовини (/forecast storm density|radius). -1 = з конфігу. */
+    private volatile int stormDensityOverride = -1;
+    private volatile double stormRadiusOverride = -1;
+
+    public void setStormDensity(int n) {
+        this.stormDensityOverride = Math.max(1, Math.min(2000, n));
+    }
+
+    public void setStormRadius(double r) {
+        this.stormRadiusOverride = Math.max(3.0, Math.min(60.0, r));
+    }
+
+    public int stormDensity() {
+        return stormDensityOverride >= 0 ? stormDensityOverride : plugin.settings().stormParticles;
+    }
+
+    public double stormRadius() {
+        return stormRadiusOverride > 0 ? stormRadiusOverride : plugin.settings().stormRadius;
+    }
 
     public SnowSystem(WinterPlugin plugin, SnowMarks marks) {
         this.plugin = plugin;
@@ -262,16 +281,13 @@ public final class SnowSystem {
             }
             boolean storm = pr == Climate.Precip.BLIZZARD;
             Settings cfg = plugin.settings();
-            int n = storm ? cfg.stormParticles : 9;
-            double radius = storm ? cfg.stormRadius : 14.0;
+            int n = storm ? stormDensity() : 9;
+            double radius = storm ? stormRadius() : 14.0;
             double wind = storm ? 0.9 : 0.12;
             Location l = p.getLocation();
             if (storm) {
-                // Хуртовина: широка хмара снігу над гравцем, видна здалеку. Під дахом не спавнимо.
-                if (w.getHighestBlockYAt(l) > l.getBlockY() + 2) {
-                    continue;
-                }
-                double r = cfg.stormRadius;
+                // Хуртовина: широка хмара снігу над гравцем, видна здалеку й крізь вікна (під дахом теж спавнимо)
+                double r = radius;
                 p.spawnParticle(Particle.SNOWFLAKE, l.getX(), l.getY() + 12.0, l.getZ(), n, r, 5.0, r, 0.0);
                 continue;
             }

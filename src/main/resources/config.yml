@@ -34,7 +34,7 @@ biomes:
 precipitation:
   control-weather: true        # плагін сам вмикає/вимикає опади за прогнозом
   snow-chance: 0.30            # шанс снігу на відрізок
-  blizzard-chance: 0.10        # шанс хуртовини на відрізок
+  blizzard-chance: 0.03        # шанс природної хуртовини на відрізок (рідко)
   snow-temp-modifier: -1       # на скільки градусів холодніше під час снігу
   blizzard-temp-modifier: -4   # на скільки градусів холодніше під час хуртовини
   forced-blizzard-temp-modifier: -8  # те саме, але для примусової хуртовини (/forecast storm on)

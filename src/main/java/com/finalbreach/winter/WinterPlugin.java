@@ -163,6 +163,10 @@ public final class WinterPlugin extends JavaPlugin implements Listener {
         return cold;
     }
 
+    public SnowSystem snow() {
+        return snow;
+    }
+
     public Settings settings() {
         return settings;
     }
