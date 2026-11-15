@@ -324,14 +324,11 @@ public final class SnowSystem {
             double wind = storm ? 0.9 : 0.12;
             Location l = p.getLocation();
             if (storm) {
-                // Хуртовина: хмара снігу в смузі між землею і рівнем гравця; під дахом не спавнимо (сніг не пробиває дах)
-                int top = w.getHighestBlockYAt(l, HeightMap.MOTION_BLOCKING);
-                if (top > l.getBlockY() + 2) {
-                    continue;
-                }
+                // Хуртовина: сніг падає з неба (на 12–24 блоки над гравцем). Масові частинки не
+                // перевіряються на дахи, тому спавн іде у верхній зоні; окремі частинки — лише у відкритих колонках
                 double r = radius;
-                double yMin = Math.max(top + 1.0, l.getY() - 8.0);
-                double yMax = Math.max(yMin + 1.0, l.getY() + 5.0);
+                double yMin = l.getY() + 12.0;
+                double yMax = Math.min(w.getMaxHeight() - 2.0, l.getY() + 24.0);
                 double cy = (yMin + yMax) / 2.0;
                 p.spawnParticle(Particle.SNOWFLAKE, l.getX(), cy, l.getZ(), n, r, (yMax - yMin) / 2.0, r, 0.0);
                 // вітер: частина сніжинок летить убік з власною швидкістю (count=0, offset = вектор швидкості)
@@ -343,6 +340,12 @@ public final class SnowSystem {
                         double x = l.getX() + (rnd.nextDouble() * 2.0 - 1.0) * r;
                         double z = l.getZ() + (rnd.nextDouble() * 2.0 - 1.0) * r;
                         double y = yMin + rnd.nextDouble() * (yMax - yMin);
+                        // частинка, яка впала б крізь дах, не спавниться
+                        int bx = (int) Math.floor(x);
+                        int bz = (int) Math.floor(z);
+                        if (w.getHighestBlockYAt(bx, bz, HeightMap.MOTION_BLOCKING) >= y) {
+                            continue;
+                        }
                         p.spawnParticle(Particle.SNOWFLAKE, x, y, z, 0, fc.blowX() * strength, -0.15, fc.blowZ() * strength, 0.0);
                     }
                 }
