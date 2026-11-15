@@ -3,6 +3,15 @@ package com.finalbreach.winter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
+import io.papermc.paper.datacomponent.DataComponentTypes;
+import io.papermc.paper.datacomponent.item.Consumable;
+import io.papermc.paper.datacomponent.item.consumable.ItemUseAnimation;
+import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.Keyed;
 import org.bukkit.Location;
 import org.bukkit.Registry;
@@ -96,7 +105,7 @@ public final class Drinks implements Listener {
             "minecraft:frozen_ocean", new String[]{"frozen_ocean_dip", "done"},
             "minecraft:snowy_beach", new String[]{"snowy_beach_walk", "done"});
     private final Map<String, Brew> brews = new HashMap<>();
-    private final Map<UUID, Long> lastSip = new HashMap<>();
+    private final Map<UUID, BukkitTask> satiation = new HashMap<>();
 
     public Drinks(WinterPlugin plugin) {
         this.plugin = plugin;
@@ -199,7 +208,7 @@ public final class Drinks implements Listener {
         m.setCustomModelData(1003);
         m.getPersistentDataContainer().set(kThermos, PersistentDataType.BYTE, (byte) 1);
         it.setItemMeta(m);
-        return it;
+        return thermosStyle(it);
     }
 
     private ItemStack filledThermos(ItemStack source) {
@@ -215,7 +224,7 @@ public final class Drinks implements Listener {
         c.set(kSips, PersistentDataType.INTEGER, sipsMax());
         it.setItemMeta(m);
         refreshLore(it);
-        return it;
+        return thermosStyle(it);
     }
 
     private String displayName(String type) {
@@ -468,6 +477,14 @@ public final class Drinks implements Listener {
         }
     }
 
+    @EventHandler
+    public void onQuitSatiation(PlayerQuitEvent e) {
+        BukkitTask t = satiation.remove(e.getPlayer().getUniqueId());
+        if (t != null) {
+            t.cancel();
+        }
+    }
+
     private void award(Player p, String advancementId, String criterion) {
         Advancement adv = Bukkit.getAdvancement(new NamespacedKey("fbwinter", advancementId));
         if (adv != null) {
@@ -478,6 +495,13 @@ public final class Drinks implements Listener {
     @EventHandler
     public void onConsume(PlayerItemConsumeEvent e) {
         ItemStack it = e.getItem();
+        if (isThermos(it)) {
+            e.setCancelled(true); // ковток рахуємо самі, ванільне споживання не чіпає термос
+            if (isDrink(it)) {
+                sipThermos(e.getPlayer(), e.getHand(), it);
+            }
+            return;
+        }
         if (!isDrink(it)) {
             return;
         }
@@ -504,44 +528,51 @@ public final class Drinks implements Listener {
         }
     }
 
-    /** Термос: ПКМ п'є один ковток, порції зменшуються; термос порожній після останнього ковтка. */
+    /** Термос: тримаєш ПКМ, як звичайний напій (ковток на завершенні). Блок-установка заборонена. */
     @EventHandler
     public void onThermosUse(PlayerInteractEvent e) {
         if (e.getHand() != EquipmentSlot.HAND) {
             return;
         }
-        if (e.getAction() != Action.RIGHT_CLICK_AIR && e.getAction() != Action.RIGHT_CLICK_BLOCK) {
+        if (!isThermos(e.getItem())) {
             return;
         }
-        ItemStack it = e.getItem();
-        if (!isThermos(it)) {
-            return;
-        }
-        // Термос не ставиться як горщик: блокуємо і повітря, і блок
-        e.setCancelled(true);
-        e.setUseItemInHand(Event.Result.DENY);
         e.setUseInteractedBlock(Event.Result.DENY);
-        if (!isDrink(it)) {
-            return;
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onThermosPlace(BlockPlaceEvent e) {
+        if (isThermos(e.getItemInHand())) {
+            e.setCancelled(true);
         }
-        Player p = e.getPlayer();
-        // Одна ПКМ часто дає дві події (повітря і блок): один ковток на 0.4 с
-        long now = System.currentTimeMillis();
-        Long prev = lastSip.get(p.getUniqueId());
-        if (prev != null && now - prev < 400) {
-            return;
-        }
-        lastSip.put(p.getUniqueId(), now);
+    }
+
+    /** Термос з вищими споживними властивостями, щоб його можна було тримати як їжу. */
+    private ItemStack thermosStyle(ItemStack it) {
+        it.setData(DataComponentTypes.CONSUMABLE, Consumable.consumable()
+                .consumeSeconds(1.6F)
+                .animation(ItemUseAnimation.DRINK)
+                .build());
+        return it;
+    }
+
+    private void sipThermos(Player p, EquipmentSlot hand, ItemStack it) {
         effect(p, it);
         int left = getSips(it) - 1;
+        ItemStack next;
         if (left <= 0) {
-            p.getInventory().setItemInMainHand(emptyThermos());
+            next = emptyThermos();
         } else {
             ItemMeta m = it.getItemMeta();
             m.getPersistentDataContainer().set(kSips, PersistentDataType.INTEGER, left);
             it.setItemMeta(m);
             refreshLore(it);
-            p.getInventory().setItemInMainHand(it);
+            next = thermosStyle(it);
+        }
+        if (hand == EquipmentSlot.OFF_HAND) {
+            p.getInventory().setItemInOffHand(next);
+        } else {
+            p.getInventory().setItemInMainHand(next);
         }
     }
 
