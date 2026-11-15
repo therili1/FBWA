@@ -164,6 +164,7 @@ drinks:
   min-effect-temp: 40          # нижче цієї температури напій не дає ефектів
   brew-seconds: 20             # скільки секунд варити над запаленим багаттям
   max-ingredients: 4           # скільки інгредієнтів у казані
+  compote-saturation: 3        # одноразова ситість від компоту (рівень 1-5)
   coffee-saturation:
     level: 5                   # рівень ситості, яку дає кава (1-5)
     interval-seconds: 2        # як часто подавати ситість
@@ -194,6 +195,11 @@ drinks:
       ingredients: [COCOA_BEANS, SUGAR, WATER_BUCKET, COCOA_BEANS]
       power: 0.8
       seconds: 90
+    compote:
+      name: "Компот"
+      ingredients: [SWEET_BERRIES, SWEET_BERRIES, SUGAR, WATER_BUCKET]
+      power: 0.8
+      seconds: 150
 
 # Котельня: спільний запас палива на групу печей (/boiler set)
 boiler:

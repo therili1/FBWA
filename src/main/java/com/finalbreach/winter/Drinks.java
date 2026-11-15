@@ -495,6 +495,10 @@ public final class Drinks implements Listener {
         if ("coffee".equals(type)) {
             startSatiation(p);
         }
+        if ("compote".equals(type)) {
+            int lvl = Math.max(1, Math.min(5, plugin.getConfig().getInt("drinks.compote-saturation", 3)));
+            p.addPotionEffect(new PotionEffect(PotionEffectType.SATURATION, 1, lvl - 1, false, false, false));
+        }
     }
 
     /** Кава: ситість подається кожні кілька секунд протягом заданого часу. Новий ковток перезапускає таймер. */
