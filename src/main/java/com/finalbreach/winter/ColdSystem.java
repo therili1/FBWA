@@ -108,12 +108,16 @@ public final class ColdSystem implements Runnable {
         double temp = st.felt;
 
         // Вітер: на відкритому місці під час хуртовини температура відчувається нижчою (без тепла від печей)
+        if (local != null && local.heat() >= 10.0) {
+            Achievements.award(p, "heat_house", "heated");
+        }
         if (local == null || local.heat() < 0.1) {
             World ww = p.getWorld();
             var loc = p.getLocation();
             boolean skyOpen = ww.getHighestBlockYAt(loc) <= loc.getBlockY() + 1;
             boolean stormNow = plugin.climate(ww).at(ww.getFullTime()).precip() != Climate.Precip.CLEAR;
             if (skyOpen && stormNow) {
+                Achievements.award(p, "blizzard_walker", "done");
                 temp -= plugin.getConfig().getDouble("wind.chill-degrees", 6.0);
             }
         }
@@ -158,7 +162,11 @@ public final class ColdSystem implements Runnable {
             }
             Pending pd = st.pending.computeIfAbsent(id, k -> new Pending());
             pd.seen = now;
-            warmth += heaters.factor(it, pd.seconds);
+            double hf = heaters.factor(it, pd.seconds);
+            warmth += hf;
+            if (hf > 0.0) {
+                Achievements.award(p, "first_warmth", "done");
+            }
 
             // грілка "горить", лише поки гравцеві холодно
             if (needed) {
@@ -188,6 +196,9 @@ public final class ColdSystem implements Runnable {
         double deficit = Math.max(0.0, required - warmth);
         if (deficit > 0.001) {
             st.exposure += DT;
+            if (st.exposure >= s.grace) {
+                Achievements.award(p, "winter_cold", "froze");
+            }
         } else {
             st.exposure = Math.max(0.0, st.exposure - DT * 2.0);
             st.damageTimer = 0.0;

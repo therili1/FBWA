@@ -46,6 +46,7 @@ public final class WinterPlugin extends JavaPlugin implements Listener {
     private IceSystem ice;
     private ColdSystem cold;
     private Drinks drinks;
+    private Boiler boiler;
     private SnowMarks marks;
     private SnowSystem snow;
     private CampfireSystem campfires;
@@ -85,6 +86,13 @@ public final class WinterPlugin extends JavaPlugin implements Listener {
         registerRecipe();
         drinks = new Drinks(this);
         drinks.register();
+        boiler = new Boiler(this);
+        getServer().getPluginManager().registerEvents(boiler, this);
+        PluginCommand boilerCmd = getCommand("boiler");
+        if (boilerCmd != null) {
+            boilerCmd.setExecutor(boiler);
+        }
+        getServer().getScheduler().runTaskTimer(this, boiler::tick, 80L, 40L);
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getPluginManager().registerEvents(campfires, this);
         getServer().getPluginManager().registerEvents(new WorldSnow(this), this);
@@ -116,6 +124,9 @@ public final class WinterPlugin extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
+        if (boiler != null) {
+            boiler.shutdown();
+        }
         saveChanges();
         if (snow != null) {
             snow.resetAll();
@@ -367,6 +378,12 @@ public final class WinterPlugin extends JavaPlugin implements Listener {
         e.setCurrentItem(magma
                 ? heaters.apply(center, settings.magmaHeaterSeconds, true)
                 : heaters.apply(center, settings.heaterSeconds));
+        if (e.getWhoClicked() instanceof org.bukkit.entity.Player cp) {
+            Achievements.award(cp, "heater_first_craft", "done");
+            if (magma) {
+                Achievements.award(cp, "cyborg_heater", "done");
+            }
+        }
     }
 
     // ---------- сніг гравців ----------

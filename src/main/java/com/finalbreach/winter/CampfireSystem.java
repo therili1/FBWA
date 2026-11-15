@@ -111,6 +111,7 @@ public final class CampfireSystem implements Listener, Runnable {
         }
         int now = Math.min(s.fuelCap, fuel + add);
         writeFuel(b, now);
+        Achievements.countFuel(p);
 
         if (p.getGameMode() != GameMode.CREATIVE) {
             if (item.getAmount() > 1) {

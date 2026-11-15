@@ -15,7 +15,15 @@ commands:
     usage: /wl add|remove|list|reload [нік]
     permission: finalbreach.wl
     permission-message: Немає прав на цю команду.
+  boiler:
+    description: Котельня зі спільним запасом палива
+    usage: /boiler set|unset|info
+    permission: finalbreach.boiler
+    permission-message: Немає прав на цю команду.
 permissions:
+  finalbreach.boiler:
+    description: Керування котельнею
+    default: op
   finalbreach.wl:
     description: Керування білим списком
     default: op

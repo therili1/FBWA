@@ -188,3 +188,14 @@ drinks:
       ingredients: [COCOA_BEANS, SUGAR, WATER_BUCKET, COCOA_BEANS]
       power: 0.8
       seconds: 90
+
+# Котельня: спільний запас палива на групу печей (/boiler set)
+boiler:
+  max-members: 20              # печей у одній котельні
+  max-fuel-seconds: 3600       # максимальний запас у секундах
+  fixed-rate: 0                # 0 = по одній одиниці на кожну запалену піч; >0 = фіксована витрата на групу (с/с)
+  fuel:
+    LAVA_BUCKET: 300           # відро лави: 300 с
+    COAL: 80
+    CHARCOAL: 80
+    BLAZE_ROD: 120
