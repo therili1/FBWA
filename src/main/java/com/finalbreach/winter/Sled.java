@@ -9,13 +9,11 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.type.Snow;
-import org.bukkit.entity.Boat;
+import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
-import org.bukkit.entity.Interaction;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Player;
-import org.bukkit.event.Cancellable;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
@@ -23,8 +21,6 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.event.vehicle.VehicleDamageEvent;
-import org.bukkit.event.vehicle.VehicleDestroyEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.RecipeChoice;
@@ -44,12 +40,11 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Санки: човен + 2 залізних злитки. По снігу і льоду ковзають майже без тертя, керувати не можна.
- * Спочатку їх треба підштовхнути (ЛКМ по санках), далі вони їдуть самі і на спуску прискорюються.
- * Присісти + ПКМ по санках — підібрати.
- *
- * Човен прихований (фізика), видно модель санок (ItemDisplay), а клікати можна по невидимому
- * Interaction, який стоїть на місці санок.
+ * Санки: 2 залізні злитки + човен. По снігу і льоду ковзають майже без тертя.
+ *  - ЛКМ по санках (без пасажира) — підштовхнути.
+ *  - ПКМ по санках — сісти. Сидячи санки повертаються за поглядом, але не штовхаються і не керуються.
+ *  - Присідання + ПКМ (без пасажира) — підібрати.
+ * На спуску санки прискорюються вперед. Видно модель санок (ItemDisplay), сама стійка невидима.
  */
 public final class Sled implements Listener {
 
@@ -71,12 +66,8 @@ public final class Sled implements Listener {
     private final NamespacedKey recipeKey;
     /** Попередня висота санок (для схилу). */
     private final Map<UUID, Double> lastY = new HashMap<>();
-    /** Модель санок, яка їде за човном. */
+    /** Модель санок, яка їде за стійкою. */
     private final Map<UUID, ItemDisplay> visuals = new HashMap<>();
-    /** Невидимий елемент для кліків: човен -> Interaction. */
-    private final Map<UUID, Interaction> hitboxOf = new HashMap<>();
-    /** Зворотний зв'язок: Interaction -> човен. */
-    private final Map<UUID, UUID> boatOfHitbox = new HashMap<>();
 
     public Sled(WinterPlugin plugin) {
         this.plugin = plugin;
@@ -101,23 +92,8 @@ public final class Sled implements Listener {
                 && it.getItemMeta().getPersistentDataContainer().has(sledKey, PersistentDataType.BYTE);
     }
 
-    private boolean isSledBoat(Entity e) {
-        return e instanceof Boat && e.getPersistentDataContainer().has(sledKey, PersistentDataType.BYTE);
-    }
-
-    /** Санки, до яких відноситься сутність (сам човен або його невидимий Interaction). */
-    private Boat sledOf(Entity e) {
-        if (isSledBoat(e)) {
-            return (Boat) e;
-        }
-        if (e instanceof Interaction) {
-            UUID boatId = boatOfHitbox.get(e.getUniqueId());
-            Entity boat = boatId == null ? null : Bukkit.getEntity(boatId);
-            if (isSledBoat(boat)) {
-                return (Boat) boat;
-            }
-        }
-        return null;
+    private boolean isSledStand(Entity e) {
+        return e instanceof ArmorStand && e.getPersistentDataContainer().has(sledKey, PersistentDataType.BYTE);
     }
 
     /** Рецепт: будь-який човен + 2 залізні злитки. */
@@ -172,31 +148,25 @@ public final class Sled implements Listener {
                 ? ((Snow) surface.getBlockData()).getLayers() / 8.0 : 1.0;
         Location loc = surface.getLocation().add(0.5, top, 0.5);
 
-        // Paper 26.3 не створює човни через клас Boat, тож беремо тип сутності
-        Boat sled = (Boat) loc.getWorld().spawnEntity(loc, EntityType.OAK_BOAT);
-        sled.getPersistentDataContainer().set(sledKey, PersistentDataType.BYTE, (byte) 1);
-        sled.setRotation(p.getLocation().getYaw(), 0F);
-        sled.setVisibleByDefault(false); // човен не малюємо: видно модель санок
+        ArmorStand stand = (ArmorStand) loc.getWorld().spawnEntity(loc, EntityType.ARMOR_STAND);
+        stand.getPersistentDataContainer().set(sledKey, PersistentDataType.BYTE, (byte) 1);
+        stand.setVisible(false);       // стійку не малюємо: видно модель санок
+        stand.setSmall(true);
+        stand.setBasePlate(false);
+        stand.setArms(false);
+        stand.setRotation(p.getLocation().getYaw(), 0F);
+        stand.setPersistent(false);
 
         ItemDisplay visual = loc.getWorld().spawn(loc, ItemDisplay.class, d -> {
             d.setItemStack(sledItem());
             d.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.FIXED);
-            // модель санок лежить від 0 до 8 пікселів: піднімаємо її, щоб стояла на поверхні, а не під нею
+            // модель санок лежить від 0 до 8 пікселів: піднімаємо її, щоб стояла на поверхні
             d.setTransformation(new Transformation(
                     new Vector3f(0, 0.5F, 0), new Quaternionf(), new Vector3f(1, 1, 1), new Quaternionf()));
             d.setPersistent(false);
         });
-        visuals.put(sled.getUniqueId(), visual);
-
-        Interaction hit = (Interaction) loc.getWorld().spawnEntity(loc, EntityType.INTERACTION);
-        hit.setInteractionWidth(1.2F);
-        hit.setInteractionHeight(0.7F);
-        hit.setResponsive(true);
-        hit.setPersistent(false);
-        hitboxOf.put(sled.getUniqueId(), hit);
-        boatOfHitbox.put(hit.getUniqueId(), sled.getUniqueId());
-
-        lastY.put(sled.getUniqueId(), sled.getLocation().getY());
+        visuals.put(stand.getUniqueId(), visual);
+        lastY.put(stand.getUniqueId(), stand.getLocation().getY());
 
         ItemStack held = p.getInventory().getItemInMainHand();
         if (held.getAmount() > 1) {
@@ -207,28 +177,22 @@ public final class Sled implements Listener {
         }
     }
 
-    // ---------- взаємодія: штовхання і підбирання ----------
+    // ---------- взаємодія ----------
 
-    /** ЛКМ по санках (або їх невидимому елементу): підштовхуємо, не ламаємо. */
+    /** ЛКМ по санках без пасажира: підштовхуємо. Удар по санках не завдає шкоди ніколи. */
     @EventHandler
-    public void onPushEntity(EntityDamageByEntityEvent e) {
-        Boat sled = sledOf(e.getEntity());
-        if (sled == null || !(e.getDamager() instanceof Player p)) {
+    public void onHit(EntityDamageByEntityEvent e) {
+        if (!isSledStand(e.getEntity())) {
             return;
         }
         e.setCancelled(true);
-        push(sled, p);
-    }
-
-    @EventHandler
-    public void onPushVehicle(VehicleDamageEvent e) {
-        if (isSledBoat(e.getVehicle()) && e.getAttacker() instanceof Player p) {
-            e.setCancelled(true);
-            push((Boat) e.getVehicle(), p);
+        ArmorStand sled = (ArmorStand) e.getEntity();
+        if (sled.getPassengers().isEmpty() && e.getDamager() instanceof Player p) {
+            push(sled, p);
         }
     }
 
-    private void push(Boat sled, Player p) {
+    private void push(ArmorStand sled, Player p) {
         Vector dir = p.getLocation().getDirection().setY(0);
         if (dir.lengthSquared() < 1e-6) {
             return;
@@ -238,77 +202,66 @@ public final class Sled implements Listener {
         sled.setVelocity(new Vector(push.getX(), v.getY(), push.getZ()));
     }
 
-    /** Присідання + ПКМ по санках: забираємо їх у інвентар. */
+    /** ПКМ по санках: сідаємо; присідання + ПКМ без пасажира: підбираємо. */
     @EventHandler
-    public void onPickUp(PlayerInteractEntityEvent e) {
-        Boat sled = sledOf(e.getRightClicked());
-        if (sled != null && e.getPlayer().isSneaking()) {
-            e.setCancelled(true);
-            pickUp(e.getPlayer(), sled);
-        }
+    public void onRightClick(PlayerInteractEntityEvent e) {
+        handleRightClick(e.getPlayer(), e.getRightClicked(), e);
     }
 
     @EventHandler
-    public void onPickUpAt(PlayerInteractAtEntityEvent e) {
-        Boat sled = sledOf(e.getRightClicked());
-        if (sled != null && e.getPlayer().isSneaking()) {
-            e.setCancelled(true);
-            pickUp(e.getPlayer(), sled);
+    public void onRightClickAt(PlayerInteractAtEntityEvent e) {
+        handleRightClick(e.getPlayer(), e.getRightClicked(), e);
+    }
+
+    private void handleRightClick(Player p, Entity entity, org.bukkit.event.Cancellable cancel) {
+        if (!isSledStand(entity)) {
+            return;
+        }
+        cancel.setCancelled(true);
+        ArmorStand sled = (ArmorStand) entity;
+        if (!sled.getPassengers().isEmpty()) {
+            return; // вже хтось сидить
+        }
+        if (p.isSneaking()) {
+            pickUp(p, sled);
+        } else {
+            sled.addPassenger(p);
+            p.sendActionBar(Component.text("Сидиш на санках. Щоб злізти — присядь", NamedTextColor.GRAY));
         }
     }
 
-    private void pickUp(Player p, Boat sled) {
+    private void pickUp(Player p, ArmorStand sled) {
         removeAll(sled);
         p.getInventory().addItem(sledItem()).values()
                 .forEach(left -> p.getWorld().dropItemNaturally(p.getLocation(), left));
         p.sendActionBar(Component.text("Санки підібрано", NamedTextColor.GRAY));
     }
 
-    /** Якщо човен знищили не гравцем, віддаємо предмет і прибираємо елементи. */
-    @EventHandler
-    public void onDestroy(VehicleDestroyEvent e) {
-        if (!isSledBoat(e.getVehicle())) {
-            return;
-        }
-        Location loc = e.getVehicle().getLocation();
-        removeAll((Boat) e.getVehicle());
-        loc.getWorld().dropItemNaturally(loc, sledItem());
-    }
-
-    /** Прибирає човен, модель і невидимий елемент. */
-    private void removeAll(Boat sled) {
+    /** Прибирає стійку і модель. */
+    private void removeAll(ArmorStand sled) {
         UUID id = sled.getUniqueId();
         lastY.remove(id);
         ItemDisplay v = visuals.remove(id);
         if (v != null) {
             v.remove();
         }
-        Interaction h = hitboxOf.remove(id);
-        if (h != null) {
-            boatOfHitbox.remove(h.getUniqueId());
-            h.remove();
-        }
+        sled.eject();
         sled.remove();
     }
 
     // ---------- фізика ----------
 
-    /** Кожен тік: ковзання по снігу і льоду, прискорення на спуску; модель і клікабельний елемент їдуть за човном. */
+    /** Кожен тік: ковзання по снігу і льоду, прискорення на спуску; сидячий повертає санки за поглядом. */
     public void tick() {
         Iterator<Map.Entry<UUID, Double>> it = lastY.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry<UUID, Double> entry = it.next();
             Entity e = Bukkit.getEntity(entry.getKey());
-            if (!(e instanceof Boat sled) || !sled.isValid()) {
+            if (!(e instanceof ArmorStand sled) || !sled.isValid()) {
                 it.remove();
                 ItemDisplay gone = visuals.remove(entry.getKey());
                 if (gone != null) {
                     gone.remove();
-                }
-                Interaction h = hitboxOf.remove(entry.getKey());
-                if (h != null) {
-                    boatOfHitbox.remove(h.getUniqueId());
-                    h.remove();
                 }
                 continue;
             }
@@ -316,16 +269,22 @@ public final class Sled implements Listener {
             ItemDisplay vis = visuals.get(entry.getKey());
             if (vis != null && vis.isValid()) {
                 vis.teleport(bl);
-                vis.setRotation(bl.getYaw(), 0F);
             }
-            Interaction h = hitboxOf.get(entry.getKey());
-            if (h != null && h.isValid()) {
-                h.teleport(bl);
+
+            // сидячий повертає санки за своїм поглядом, без поштовху
+            if (!sled.getPassengers().isEmpty() && sled.getPassengers().get(0) instanceof Player rider) {
+                float yaw = rider.getLocation().getYaw();
+                sled.setRotation(yaw, 0F);
+                if (vis != null && vis.isValid()) {
+                    vis.setRotation(yaw, 0F);
+                }
+            } else if (vis != null && vis.isValid()) {
+                vis.setRotation(bl.getYaw(), 0F);
             }
 
             if (!onSnow(bl)) {
                 entry.setValue(bl.getY());
-                continue; // на інших поверхнях і у воді санки поводяться як звичайний човен
+                continue; // на інших поверхнях санки просто стоять
             }
             Vector v = sled.getVelocity();
             double dy = bl.getY() - entry.getValue();
