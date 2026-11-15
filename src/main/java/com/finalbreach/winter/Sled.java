@@ -8,6 +8,7 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.block.data.type.Snow;
 import org.bukkit.entity.Boat;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -98,7 +99,13 @@ public final class Sled implements Listener {
 
     // ---------- встановлення і керування ----------
 
-    /** ПКМ по снігу з санками: ставимо їх на сніг. */
+    /** Поверхні, по яких санки їдуть: сніговий покрив, сніговий блок, порошковий сніг, лід. */
+    private static boolean isSlidable(Material m) {
+        return m == Material.SNOW || m == Material.SNOW_BLOCK || m == Material.POWDER_SNOW
+                || m == Material.ICE || m == Material.PACKED_ICE || m == Material.BLUE_ICE;
+    }
+
+    /** ПКМ по снігу або льоду з санками: ставимо їх на поверхню. */
     @EventHandler
     public void onPlace(PlayerInteractEvent e) {
         if (e.getHand() != EquipmentSlot.HAND || e.getAction() != Action.RIGHT_CLICK_BLOCK) {
@@ -108,25 +115,35 @@ public final class Sled implements Listener {
         if (!isSledItem(hand)) {
             return;
         }
-        Block clicked = e.getClickedBlock();
-        if (clicked == null || e.getBlockFace() == null) {
+        Block surface = e.getClickedBlock();
+        if (surface == null) {
             return;
         }
-        Block target = clicked.getRelative(e.getBlockFace());
-        Material under = clicked.getType();
-        if (under != Material.SNOW && under != Material.SNOW_BLOCK) {
-            return; // санки тільки на сніг
+        if (!isSlidable(surface.getType()) && e.getBlockFace() == BlockFace.UP) {
+            // клік по землі під шаром снігу: беремо шар зверху
+            Block above = surface.getRelative(BlockFace.UP);
+            if (isSlidable(above.getType())) {
+                surface = above;
+            }
+        }
+        if (!isSlidable(surface.getType())) {
+            return;
         }
         e.setCancelled(true);
         Player p = e.getPlayer();
-        Location loc = target.getLocation().add(0.5, 0.0, 0.5);
+        // висота поверхні: для шару снігу — його товщина, для інших блоків — повний блок
+        double top = surface.getType() == Material.SNOW
+                ? ((Snow) surface.getBlockData()).getLayers() / 8.0 : 1.0;
+        Location loc = surface.getLocation().add(0.5, top, 0.5);
         Boat sled = loc.getWorld().spawn(loc, Boat.class, b -> {
             b.getPersistentDataContainer().set(sledKey, PersistentDataType.BYTE, (byte) 1);
             b.setRotation(p.getLocation().getYaw(), 0F);
         });
         lastY.put(sled.getUniqueId(), sled.getLocation().getY());
-        if (hand.getAmount() > 1) {
-            hand.setAmount(hand.getAmount() - 1);
+        ItemStack held = p.getInventory().getItemInMainHand();
+        if (held.getAmount() > 1) {
+            held.setAmount(held.getAmount() - 1);
+            p.getInventory().setItemInMainHand(held);
         } else {
             p.getInventory().setItemInMainHand(new ItemStack(Material.AIR));
         }
@@ -219,8 +236,6 @@ public final class Sled implements Listener {
     private boolean onSnow(Location loc) {
         Block at = loc.getBlock();
         Block below = at.getRelative(BlockFace.DOWN);
-        Material a = at.getType();
-        Material b = below.getType();
-        return a == Material.SNOW || a == Material.SNOW_BLOCK || b == Material.SNOW_BLOCK || b == Material.SNOW;
+        return isSlidable(at.getType()) || isSlidable(below.getType());
     }
 }
