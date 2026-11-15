@@ -294,7 +294,20 @@ public final class SnowSystem {
         if (!plugin.settings().snowParticles) {
             return;
         }
-        for (UUID id : forced) {
+        // сніжинки малюються тим, хто в теплій біомі (forced), і всім, хто в хуртовину в зимовому світі:
+        // ванільна хуртовина в холодних біомах без вітру, тому свої сніжинки з вітром потрібні всім
+        Set<UUID> targets = new HashSet<>(forced);
+        for (World w : Bukkit.getWorlds()) {
+            if (!plugin.isManaged(w)) {
+                continue;
+            }
+            for (Player pl : w.getPlayers()) {
+                if (plugin.climate(w).at(w.getFullTime()).precip() == Climate.Precip.BLIZZARD) {
+                    targets.add(pl.getUniqueId());
+                }
+            }
+        }
+        for (UUID id : targets) {
             Player p = Bukkit.getPlayer(id);
             if (p == null) {
                 continue;
