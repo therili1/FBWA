@@ -162,6 +162,10 @@ drinks:
   fill-min-temp: 40            # мінімальна температура напою, щоб налити в термос
   brew-seconds: 20             # скільки секунд варити над запаленим багаттям
   max-ingredients: 4           # скільки інгредієнтів у казані
+  coffee-saturation:
+    level: 5                   # рівень ситості, яку дає кава (1-5)
+    interval-seconds: 2        # як часто подавати ситість
+    duration-seconds: 10       # скільки секунд триває ефект
   recipes:
     hot_chocolate:
       name: "Гарячий шоколад"

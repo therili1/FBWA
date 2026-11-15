@@ -475,6 +475,36 @@ public final class Drinks implements Listener {
         if ("hot_chocolate".equals(type)) {
             award(p, "hot_chocolate", "drank");
         }
+        if ("coffee".equals(type)) {
+            startSatiation(p);
+        }
+    }
+
+    /** Кава: ситість подається кожні кілька секунд протягом заданого часу. Новий ковток перезапускає таймер. */
+    private void startSatiation(Player p) {
+        UUID id = p.getUniqueId();
+        BukkitTask old = satiation.remove(id);
+        if (old != null) {
+            old.cancel();
+        }
+        int amp = Math.max(0, Math.min(5, plugin.getConfig().getInt("drinks.coffee-saturation.level", 5)) - 1);
+        long interval = Math.max(1, plugin.getConfig().getInt("drinks.coffee-saturation.interval-seconds", 2)) * 20L;
+        long duration = Math.max(1, plugin.getConfig().getInt("drinks.coffee-saturation.duration-seconds", 10)) * 20L;
+        BukkitTask task = new BukkitRunnable() {
+            long elapsed = 0;
+
+            @Override
+            public void run() {
+                if (!p.isOnline() || elapsed >= duration) {
+                    cancel();
+                    satiation.remove(id);
+                    return;
+                }
+                p.addPotionEffect(new PotionEffect(PotionEffectType.SATURATION, 1, amp, false, false, false));
+                elapsed += interval;
+            }
+        }.runTaskTimer(plugin, 0L, interval);
+        satiation.put(id, task);
     }
 
     @EventHandler
