@@ -11,6 +11,7 @@ import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.type.Snow;
 import org.bukkit.entity.Boat;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.block.Action;
@@ -56,6 +57,10 @@ public final class Sled implements Listener {
     private final NamespacedKey sledKey;
     private final NamespacedKey recipeKey;
     private final Map<UUID, Double> lastY = new HashMap<>();
+    /** Модель санок, яка їде за невидимим човном. */
+    private final Map<UUID, ItemDisplay> visuals = new HashMap<>();
+    /** CustomModelData санок у ресурс-паку (assets/minecraft/items/oak_boat.json). */
+    public static final int SLED_MODEL = 2001;
 
     public Sled(WinterPlugin plugin) {
         this.plugin = plugin;
@@ -69,6 +74,7 @@ public final class Sled implements Listener {
         ItemStack it = new ItemStack(Material.OAK_BOAT);
         ItemMeta m = it.getItemMeta();
         m.displayName(Component.text("Санки", NamedTextColor.AQUA));
+        m.setCustomModelData(SLED_MODEL);
         m.getPersistentDataContainer().set(sledKey, PersistentDataType.BYTE, (byte) 1);
         it.setItemMeta(m);
         return it;
@@ -139,6 +145,13 @@ public final class Sled implements Listener {
             b.getPersistentDataContainer().set(sledKey, PersistentDataType.BYTE, (byte) 1);
             b.setRotation(p.getLocation().getYaw(), 0F);
         });
+        sled.setVisibleByDefault(false); // човна не видно: показуємо модель санок
+        ItemDisplay visual = loc.getWorld().spawn(loc, ItemDisplay.class, d -> {
+            d.setItemStack(sledItem());
+            d.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.FIXED);
+            d.setPersistent(false);
+        });
+        visuals.put(sled.getUniqueId(), visual);
         lastY.put(sled.getUniqueId(), sled.getLocation().getY());
         ItemStack held = p.getInventory().getItemInMainHand();
         if (held.getAmount() > 1) {
@@ -152,32 +165,56 @@ public final class Sled implements Listener {
     /** ЛКМ по санках: підштовхуємо їх у напрямку погляду (не ламаємо). */
     @EventHandler
     public void onPush(VehicleDamageEvent e) {
-        if (!isSled(e.getVehicle()) || !(e.getAttacker() instanceof Player p)) {
-            return;
+        if (isSled(e.getVehicle()) && e.getAttacker() instanceof Player p) {
+            e.setCancelled(true);
+            push((Boat) e.getVehicle(), p);
         }
-        e.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onPushEntity(org.bukkit.event.entity.EntityDamageByEntityEvent e) {
+        if (isSled(e.getEntity()) && e.getDamager() instanceof Player p) {
+            e.setCancelled(true);
+            push((Boat) e.getEntity(), p);
+        }
+    }
+
+    private void push(Boat sled, Player p) {
         Vector dir = p.getLocation().getDirection().setY(0);
         if (dir.lengthSquared() < 1e-6) {
             return;
         }
         Vector push = dir.normalize().multiply(PUSH);
-        Vector v = e.getVehicle().getVelocity();
-        e.getVehicle().setVelocity(new Vector(push.getX(), v.getY(), push.getZ()));
+        Vector v = sled.getVelocity();
+        sled.setVelocity(new Vector(push.getX(), v.getY(), push.getZ()));
     }
 
     /** Присідання + ПКМ по санках: забираємо їх у інвентар. */
     @EventHandler
     public void onPickUp(PlayerInteractEntityEvent e) {
-        if (!isSled(e.getRightClicked()) || !e.getPlayer().isSneaking()) {
+        tryPickUp(e.getPlayer(), e.getRightClicked(), e);
+    }
+
+    @EventHandler
+    public void onPickUpAt(org.bukkit.event.player.PlayerInteractAtEntityEvent e) {
+        tryPickUp(e.getPlayer(), e.getRightClicked(), e);
+    }
+
+    private void tryPickUp(Player p, Entity entity, org.bukkit.event.Cancellable cancel) {
+        if (!isSled(entity) || !p.isSneaking()) {
             return;
         }
-        e.setCancelled(true);
-        Boat sled = (Boat) e.getRightClicked();
+        cancel.setCancelled(true);
+        Boat sled = (Boat) entity;
         lastY.remove(sled.getUniqueId());
+        ItemDisplay v = visuals.remove(sled.getUniqueId());
+        if (v != null) {
+            v.remove();
+        }
         sled.remove();
-        e.getPlayer().getInventory().addItem(sledItem()).values()
-                .forEach(left -> e.getPlayer().getWorld().dropItemNaturally(e.getPlayer().getLocation(), left));
-        e.getPlayer().sendActionBar(Component.text("Санки підібрано", NamedTextColor.GRAY));
+        p.getInventory().addItem(sledItem()).values()
+                .forEach(left -> p.getWorld().dropItemNaturally(p.getLocation(), left));
+        p.sendActionBar(Component.text("Санки підібрано", NamedTextColor.GRAY));
     }
 
     /** Якщо санки зникли не через гравця (наприклад, зламані), віддаємо предмет. */
@@ -187,6 +224,10 @@ public final class Sled implements Listener {
             return;
         }
         lastY.remove(e.getVehicle().getUniqueId());
+        ItemDisplay v = visuals.remove(e.getVehicle().getUniqueId());
+        if (v != null) {
+            v.remove();
+        }
         Location loc = e.getVehicle().getLocation();
         loc.getWorld().dropItemNaturally(loc, sledItem());
     }
@@ -201,7 +242,17 @@ public final class Sled implements Listener {
             Entity e = Bukkit.getEntity(entry.getKey());
             if (!(e instanceof Boat sled) || !sled.isValid()) {
                 it.remove();
+                ItemDisplay gone = visuals.remove(entry.getKey());
+                if (gone != null) {
+                    gone.remove();
+                }
                 continue;
+            }
+            ItemDisplay vis = visuals.get(entry.getKey());
+            if (vis != null && vis.isValid()) {
+                Location bl = sled.getLocation();
+                vis.teleport(bl);
+                vis.setRotation(bl.getYaw(), 0F);
             }
             if (!onSnow(sled.getLocation())) {
                 entry.setValue(sled.getLocation().getY());
