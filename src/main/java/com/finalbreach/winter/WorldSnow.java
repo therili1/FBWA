@@ -75,10 +75,7 @@ public final class WorldSnow implements Listener {
                     continue; // вже є сніг: не нарощуємо шари
                 }
                 if (!am.isAir()) {
-                    if (!above.isPassable() || above.isLiquid()) {
-                        continue;
-                    }
-                    clearPlant(above);
+                    continue; // рослини (трава, ягоди, квіти) не чіпаємо: сніг лише на порожнє місце
                 }
                 Snow snow = (Snow) Material.SNOW.createBlockData();
                 snow.setLayers(1 + rnd.nextInt(Math.min(2, snow.getMaximumLayers())));
@@ -88,16 +85,6 @@ public final class WorldSnow implements Listener {
 
         if (plugin.getConfig().getBoolean("worldgen.ice.enabled", false)) {
             freezeWater(w, c);
-        }
-    }
-
-    /** Прибирає рослину і її верхню половину (високі трави, папороті, піони). Без фізики. */
-    private void clearPlant(Block b) {
-        Material t = b.getType();
-        Block up = b.getRelative(0, 1, 0);
-        b.setType(Material.AIR, false);
-        if (up.getType() == t) {
-            up.setType(Material.AIR, false);
         }
     }
 
