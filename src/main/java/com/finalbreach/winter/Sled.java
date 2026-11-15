@@ -41,7 +41,7 @@ import java.util.UUID;
 
 /**
  * Санки: 2 залізні злитки + човен. По снігу і льоду ковзають майже без тертя.
- *  - ЛКМ по санках — підштовхнути (навіть коли хтось сидить).
+ *  - ЛКМ по санках — підштовхнути (навіть коли хтось сидить). Сила: з розбігу сильніше, з присіданням слабше.
  *  - ПКМ по санках — сісти. Сидячи санки повертаються за поглядом, але не штовхаються і не керуються.
  *  - Присідання + ПКМ (без пасажира) — підібрати.
  * На спуску санки прискорюються вперед. Видно модель санок (ItemDisplay), сама стійка невидима.
@@ -50,8 +50,12 @@ public final class Sled implements Listener {
 
     /** Тертя по снігу: 1 = без тертя, менше = більше ковзання. */
     private static final double FRICTION = 0.985;
-    /** Поштовх гравця (ЛКМ по санках). */
+    /** Звичайний поштовх (ЛКМ по санках). */
     private static final double PUSH = 0.6;
+    /** Сильний поштовх з розбігу (ЛКМ під час бігу). */
+    private static final double PUSH_SPRINT = 1.2;
+    /** Слабкий поштовх із присіданням. */
+    private static final double PUSH_SNEAK = 0.25;
     /** Прискорення вперед на спуску за один тік. */
     private static final double DOWNHILL_ACCEL = 0.04;
     /** Максимальна швидкість санок. */
@@ -188,16 +192,18 @@ public final class Sled implements Listener {
         e.setCancelled(true);
         ArmorStand sled = (ArmorStand) e.getEntity();
         if (e.getDamager() instanceof Player p) {
-            push(sled, p); // штовхати можна і тоді, коли на санках хтось сидить
+            // штовхати можна і тоді, коли на санках хтось сидить; сила залежить від розбігу або присідання
+            double force = p.isSprinting() ? PUSH_SPRINT : (p.isSneaking() ? PUSH_SNEAK : PUSH);
+            push(sled, p, force);
         }
     }
 
-    private void push(ArmorStand sled, Player p) {
+    private void push(ArmorStand sled, Player p, double force) {
         Vector dir = p.getLocation().getDirection().setY(0);
         if (dir.lengthSquared() < 1e-6) {
             return;
         }
-        Vector push = dir.normalize().multiply(PUSH);
+        Vector push = dir.normalize().multiply(force);
         Vector v = sled.getVelocity();
         sled.setVelocity(new Vector(push.getX(), v.getY(), push.getZ()));
     }
