@@ -528,9 +528,8 @@ public final class Drinks implements Listener {
         if (!"champagne".equals(type)) {
             return;
         }
-        // клік по блоку — бризок, а не пиття і не установка
-        e.setUseItemInHand(Event.Result.DENY);
-        e.setUseInteractedBlock(Event.Result.DENY);
+        // клік по блоку — лише бризок: скасовуємо всю взаємодію, щоб ванільне "їсти" не стартувало
+        e.setCancelled(true);
 
         Player p = e.getPlayer();
         long now = System.currentTimeMillis();
