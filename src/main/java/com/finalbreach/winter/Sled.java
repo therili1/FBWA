@@ -41,7 +41,7 @@ import java.util.UUID;
 
 /**
  * Санки: 2 залізні злитки + човен. По снігу і льоду ковзають майже без тертя.
- *  - ЛКМ по санках (без пасажира) — підштовхнути.
+ *  - ЛКМ по санках — підштовхнути (навіть коли хтось сидить).
  *  - ПКМ по санках — сісти. Сидячи санки повертаються за поглядом, але не штовхаються і не керуються.
  *  - Присідання + ПКМ (без пасажира) — підібрати.
  * На спуску санки прискорюються вперед. Видно модель санок (ItemDisplay), сама стійка невидима.
@@ -179,7 +179,7 @@ public final class Sled implements Listener {
 
     // ---------- взаємодія ----------
 
-    /** ЛКМ по санках без пасажира: підштовхуємо. Удар по санках не завдає шкоди ніколи. */
+    /** ЛКМ по санках: підштовхуємо (навіть із пасажиром). Удар по санках не завдає шкоди ніколи. */
     @EventHandler
     public void onHit(EntityDamageByEntityEvent e) {
         if (!isSledStand(e.getEntity())) {
@@ -187,8 +187,8 @@ public final class Sled implements Listener {
         }
         e.setCancelled(true);
         ArmorStand sled = (ArmorStand) e.getEntity();
-        if (sled.getPassengers().isEmpty() && e.getDamager() instanceof Player p) {
-            push(sled, p);
+        if (e.getDamager() instanceof Player p) {
+            push(sled, p); // штовхати можна і тоді, коли на санках хтось сидить
         }
     }
 
