@@ -84,6 +84,9 @@ public final class Drinks implements Listener {
         final Location loc;
         final List<Material> items = new ArrayList<>();
         double progress;
+        long lastAdd = System.currentTimeMillis();
+        boolean checked;
+        Recipe2 recipe;
 
         Brew(Location loc) {
             this.loc = loc;
@@ -217,7 +220,7 @@ public final class Drinks implements Listener {
         m.setCustomModelData(drinkModelData(type));
         PersistentDataContainer c = m.getPersistentDataContainer();
         c.set(kType, PersistentDataType.STRING, type);
-        c.set(kTemp, PersistentDataType.INTEGER, temp);
+        c.set(kTemp, PersistentDataType.INTEGER, "champagne".equals(type) ? 0 : temp);
         it.setItemMeta(m);
         refreshLore(it);
         return it;
@@ -290,7 +293,10 @@ public final class Drinks implements Listener {
         }
         ItemMeta m = it.getItemMeta();
         List<Component> lore = new ArrayList<>();
-        lore.add(Component.text("Температура: " + getTemp(it) + "°C", NamedTextColor.GRAY));
+        String type = m.getPersistentDataContainer().get(kType, PersistentDataType.STRING);
+        if (!"champagne".equals(type)) {
+            lore.add(Component.text("Температура: " + getTemp(it) + "°C", NamedTextColor.GRAY));
+        }
         if (isThermos(it)) {
             lore.add(Component.text("Ковтків: " + getSips(it) + "/" + sipsMax(), NamedTextColor.GRAY));
         }
@@ -309,11 +315,10 @@ public final class Drinks implements Listener {
         return false;
     }
 
-    /** Рецепт визначається за набором видів інгредієнтів; скільки кожного покладено — не важливо, все йде у відвар. */
     private Recipe2 matchRecipe(List<Material> items) {
-        Set<String> have = items.stream().map(Enum::name).collect(java.util.stream.Collectors.toSet());
+        List<String> have = items.stream().map(Enum::name).sorted().toList();
         for (Recipe2 r : recipes.values()) {
-            Set<String> need = r.ingredients.stream().map(Enum::name).collect(java.util.stream.Collectors.toSet());
+            List<String> need = r.ingredients.stream().map(Enum::name).sorted().toList();
             if (need.equals(have)) {
                 return r;
             }
@@ -354,6 +359,10 @@ public final class Drinks implements Listener {
             return;
         }
         brew.items.add(hand.getType());
+        brew.lastAdd = System.currentTimeMillis();
+        brew.checked = false;
+        brew.recipe = null;
+        brew.progress = 0;
         consumeOne(p, EquipmentSlot.HAND);
         if (hand.getType() == Material.MILK_BUCKET || hand.getType() == Material.WATER_BUCKET) {
             // відро з рідиною переливається в казан, порожнє відро повертається гравцю
@@ -367,6 +376,9 @@ public final class Drinks implements Listener {
         return l.getWorld().getUID() + ":" + l.getBlockX() + "," + l.getBlockY() + "," + l.getBlockZ();
     }
 
+    /** Скільки без нових інгредієнтів казан чекає, перш ніж перевірити рецепт. */
+    private static final long IDLE_CHECK_MS = 5_000L;
+
     private void brewTick() {
         int brewSeconds = plugin.getConfig().getInt("drinks.brew-seconds", 20);
         Iterator<Brew> it = brews.values().iterator();
@@ -378,6 +390,19 @@ public final class Drinks implements Listener {
                 it.remove();
                 continue;
             }
+            if (!brew.checked && System.currentTimeMillis() - brew.lastAdd >= IDLE_CHECK_MS) {
+                // нічого не додають 5 с: казан перевіряє рецепт
+                brew.checked = true;
+                brew.recipe = matchRecipe(brew.items);
+                if (brew.recipe == null) {
+                    dropItems(brew); // невідомий рецепт: інгредієнти повертаються
+                    it.remove();
+                    continue;
+                }
+            }
+            if (brew.recipe == null) {
+                continue; // чекаємо, поки перевірка завершиться
+            }
             if (!fireBelow(b)) {
                 continue; // без вогню не варимо
             }
@@ -385,13 +410,8 @@ public final class Drinks implements Listener {
             if (brew.progress < brewSeconds) {
                 continue;
             }
-            Recipe2 r = matchRecipe(brew.items);
             Location drop = brew.loc.clone().add(0.5, 1.0, 0.5);
-            if (r != null) {
-                brew.loc.getWorld().dropItemNaturally(drop, makeDrink(r.type, 90));
-            } else {
-                dropItems(brew);
-            }
+            brew.loc.getWorld().dropItemNaturally(drop, makeDrink(brew.recipe.type, 90));
             it.remove();
         }
     }
@@ -430,7 +450,7 @@ public final class Drinks implements Listener {
             ItemStack[] contents = p.getInventory().getContents();
             boolean changed = false;
             for (ItemStack st : contents) {
-                if (st == null || !isDrink(st) || isThermos(st)) {
+                if (st == null || !isDrink(st) || isThermos(st) || isChampagne(st)) {
                     continue;
                 }
                 int t = getTemp(st);
