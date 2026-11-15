@@ -313,15 +313,15 @@ public final class SnowSystem {
                 double r = radius;
                 p.spawnParticle(Particle.SNOWFLAKE, l.getX(), l.getY() + 12.0, l.getZ(), n, r, 5.0, r, 0.0);
                 // вітер: частина сніжинок летить убік з власною швидкістю (count=0, offset = вектор швидкості)
-                double wind = stormWind();
+                double strength = stormWind();
                 Climate.Wind fc = plugin.climate(w).windAt(w.getFullTime());
-                if (wind > 0) {
+                if (strength > 0) {
                     int drifters = Math.min(WIND_DRIFTERS, n);
                     for (int i = 0; i < drifters; i++) {
                         double x = l.getX() + (rnd.nextDouble() * 2.0 - 1.0) * r;
                         double z = l.getZ() + (rnd.nextDouble() * 2.0 - 1.0) * r;
                         double y = l.getY() + 6.0 + rnd.nextDouble() * 8.0;
-                        p.spawnParticle(Particle.SNOWFLAKE, x, y, z, 0, fc.blowX() * wind, -0.15, fc.blowZ() * wind, 0.0);
+                        p.spawnParticle(Particle.SNOWFLAKE, x, y, z, 0, fc.blowX() * strength, -0.15, fc.blowZ() * strength, 0.0);
                     }
                 }
                 continue;
