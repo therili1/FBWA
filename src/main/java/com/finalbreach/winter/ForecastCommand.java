@@ -127,6 +127,14 @@ public final class ForecastCommand implements TabExecutor {
                 plugin.snow().setStormDensity((int) Math.round(parse(args[2])));
                 sender.sendMessage(Component.text("Густота сніжинок: " + plugin.snow().stormDensity(), NamedTextColor.AQUA));
             }
+            case "snowrate" -> {
+                if (args.length < 3 || parse(args[2]) == null) {
+                    sender.sendMessage(Component.text("Використання: /forecast storm snowrate <множник, напр. 5>", NamedTextColor.RED));
+                    return;
+                }
+                plugin.snow().setStormSnowMult(parse(args[2]));
+                sender.sendMessage(Component.text("Накопичення снігу в хуртовину: x" + fmt(plugin.snow().stormSnowMult(plugin.settings())), NamedTextColor.AQUA));
+            }
             case "radius" -> {
                 if (args.length < 3 || parse(args[2]) == null) {
                     sender.sendMessage(Component.text("Використання: /forecast storm radius <блоків>", NamedTextColor.RED));
@@ -148,7 +156,8 @@ public final class ForecastCommand implements TabExecutor {
             case "status" -> sender.sendMessage(Component.text(
                     "Примусова хуртовина: " + (c.forcedStorm() ? "увімкнена" : "вимкнена")
                             + ", густота " + plugin.snow().stormDensity()
-                            + ", радіус " + fmt(plugin.snow().stormRadius()), NamedTextColor.GRAY));
+                            + ", радіус " + fmt(plugin.snow().stormRadius())
+                            + ", накопичення x" + fmt(plugin.snow().stormSnowMult(plugin.settings())), NamedTextColor.GRAY));
             default -> sender.sendMessage(Component.text("Використання: /forecast storm <on|off|status>", NamedTextColor.RED));
         }
     }
@@ -342,7 +351,7 @@ public final class ForecastCommand implements TabExecutor {
         } else if (args.length == 2 && args[0].equalsIgnoreCase("override")) {
             out.add("off");
         } else if (args.length == 2 && args[0].equalsIgnoreCase("storm")) {
-            out.addAll(List.of("on", "off", "status", "density", "radius"));
+            out.addAll(List.of("on", "off", "status", "density", "radius", "snowrate"));
         } else if (args.length == 2 && args[0].equalsIgnoreCase("change")) {
             out.addAll(List.of("reset", "-25", "-15", "-5", "0"));
         } else if (args.length == 3 && args[0].equalsIgnoreCase("change")) {

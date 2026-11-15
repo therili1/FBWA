@@ -38,6 +38,16 @@ public final class SnowSystem {
     /** Live-налаштування хуртовини (/forecast storm density|radius). -1 = з конфігу. */
     private volatile int stormDensityOverride = -1;
     private volatile double stormRadiusOverride = -1;
+    /** Live-множник накопичення снігу в хуртовину (/forecast storm snowrate). -1 = з конфігу. */
+    private volatile double stormSnowMultOverride = -1;
+
+    public void setStormSnowMult(double m) {
+        this.stormSnowMultOverride = Math.max(1.0, Math.min(50.0, m));
+    }
+
+    public double stormSnowMult(Settings s) {
+        return stormSnowMultOverride > 0 ? stormSnowMultOverride : s.blizzardMult;
+    }
 
     public void setStormDensity(int n) {
         this.stormDensityOverride = Math.max(1, Math.min(2000, n));
@@ -109,7 +119,7 @@ public final class SnowSystem {
         int r = s.snowRadius;
 
         if (precip != Climate.Precip.CLEAR) {
-            int n = (int) Math.round(s.snowSamples * (precip == Climate.Precip.BLIZZARD ? s.blizzardMult : 1.0));
+            int n = (int) Math.round(s.snowSamples * (precip == Climate.Precip.BLIZZARD ? stormSnowMult(s) : 1.0));
             for (int i = 0; i < n; i++) {
                 Block top = column(w, px + rnd.nextInt(2 * r + 1) - r, pz + rnd.nextInt(2 * r + 1) - r);
                 if (top == null) {
