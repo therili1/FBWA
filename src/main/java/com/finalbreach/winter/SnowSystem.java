@@ -241,9 +241,13 @@ public final class SnowSystem {
         return new Column(cell, under, layers, baseOurs);
     }
 
-    /** Сніг накопичується лише на порожньому місці: рослини (трава, папороть, ягоди) не заміщуються. */
+    /** Що сніг може "накрити" собою: повітря й низька трава. Ягідні кущі не заміщуються. */
     private static boolean soft(Material m) {
-        return m.isAir();
+        if (m.isAir()) {
+            return true;
+        }
+        String n = m.name();
+        return n.equals("SHORT_GRASS") || n.equals("GRASS") || n.equals("FERN") || n.equals("DEAD_BUSH");
     }
 
     /** Чи тримає блок шар снігу: суцільний верх, не лід і не рідина. */
