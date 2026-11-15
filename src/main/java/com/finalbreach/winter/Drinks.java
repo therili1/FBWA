@@ -17,6 +17,7 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
@@ -95,6 +96,7 @@ public final class Drinks implements Listener {
             "minecraft:frozen_ocean", new String[]{"frozen_ocean_dip", "done"},
             "minecraft:snowy_beach", new String[]{"snowy_beach_walk", "done"});
     private final Map<String, Brew> brews = new HashMap<>();
+    private final Map<UUID, Long> lastSip = new HashMap<>();
 
     public Drinks(WinterPlugin plugin) {
         this.plugin = plugin;
@@ -515,11 +517,21 @@ public final class Drinks implements Listener {
         if (!isThermos(it)) {
             return;
         }
-        e.setCancelled(true); // термос не ставиться як горщик
+        // Термос не ставиться як горщик: блокуємо і повітря, і блок
+        e.setCancelled(true);
+        e.setUseItemInHand(Event.Result.DENY);
+        e.setUseInteractedBlock(Event.Result.DENY);
         if (!isDrink(it)) {
             return;
         }
         Player p = e.getPlayer();
+        // Одна ПКМ часто дає дві події (повітря і блок): один ковток на 0.4 с
+        long now = System.currentTimeMillis();
+        Long prev = lastSip.get(p.getUniqueId());
+        if (prev != null && now - prev < 400) {
+            return;
+        }
+        lastSip.put(p.getUniqueId(), now);
         effect(p, it);
         int left = getSips(it) - 1;
         if (left <= 0) {
