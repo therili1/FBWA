@@ -72,6 +72,8 @@ public final class Sled implements Listener {
     private final Map<UUID, Double> lastY = new HashMap<>();
     /** Модель санок, яка їде за стійкою. */
     private final Map<UUID, ItemDisplay> visuals = new HashMap<>();
+    /** Горизонтальна швидкість санок (x, z). Minecraft гальмує сутність сам, тож тримаємо її тут. */
+    private final Map<UUID, double[]> speed = new HashMap<>();
 
     public Sled(WinterPlugin plugin) {
         this.plugin = plugin;
@@ -206,6 +208,7 @@ public final class Sled implements Listener {
         Vector push = dir.normalize().multiply(force);
         Vector v = sled.getVelocity();
         sled.setVelocity(new Vector(push.getX(), v.getY(), push.getZ()));
+        speed.put(sled.getUniqueId(), new double[]{push.getX(), push.getZ()});
     }
 
     /** ПКМ по санках: сідаємо; присідання + ПКМ без пасажира: підбираємо. */
@@ -247,6 +250,7 @@ public final class Sled implements Listener {
     private void removeAll(ArmorStand sled) {
         UUID id = sled.getUniqueId();
         lastY.remove(id);
+        speed.remove(id);
         ItemDisplay v = visuals.remove(id);
         if (v != null) {
             v.remove();
@@ -265,6 +269,7 @@ public final class Sled implements Listener {
             Entity e = Bukkit.getEntity(entry.getKey());
             if (!(e instanceof ArmorStand sled) || !sled.isValid()) {
                 it.remove();
+                speed.remove(entry.getKey());
                 ItemDisplay gone = visuals.remove(entry.getKey());
                 if (gone != null) {
                     gone.remove();
@@ -296,8 +301,12 @@ public final class Sled implements Listener {
             double dy = bl.getY() - entry.getValue();
             entry.setValue(bl.getY());
 
-            double vx = v.getX() * FRICTION;
-            double vz = v.getZ() * FRICTION;
+            double[] st = speed.get(entry.getKey());
+            if (st == null) {
+                st = new double[]{v.getX(), v.getZ()};
+            }
+            double vx = st[0] * FRICTION;
+            double vz = st[1] * FRICTION;
             double hs = Math.sqrt(vx * vx + vz * vz);
             if (dy < -0.02 && hs > 0.001) {
                 // з гори: прискорюємося вперед, за напрямком руху
@@ -314,6 +323,9 @@ public final class Sled implements Listener {
                 vx = 0;
                 vz = 0;
             }
+            st[0] = vx;
+            st[1] = vz;
+            speed.put(entry.getKey(), st);
             sled.setVelocity(new Vector(vx, v.getY(), vz));
         }
     }
