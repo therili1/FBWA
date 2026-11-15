@@ -34,6 +34,7 @@ import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.block.BlockDamageEvent;
 import org.bukkit.event.inventory.PrepareItemCraftEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
@@ -94,6 +95,7 @@ public final class Drinks implements Listener {
     private final NamespacedKey kTemp;
     private final NamespacedKey kThermos;
     private final NamespacedKey kSips;
+    private final NamespacedKey kChampagneFill;
     private final NamespacedKey kRawRecipe;
     private final NamespacedKey kThermosRecipe;
     private final NamespacedKey kFillRecipe;
@@ -118,6 +120,7 @@ public final class Drinks implements Listener {
         this.kTemp = new NamespacedKey(plugin, "drink_temp");
         this.kThermos = new NamespacedKey(plugin, "thermos");
         this.kSips = new NamespacedKey(plugin, "thermos_sips");
+        this.kChampagneFill = new NamespacedKey(plugin, "champagne_fill");
         this.kRawRecipe = new NamespacedKey(plugin, "raw_hot_chocolate");
         this.kThermosRecipe = new NamespacedKey(plugin, "thermos_empty");
         this.kFillRecipe = new NamespacedKey(plugin, "thermos_fill");
@@ -513,33 +516,49 @@ public final class Drinks implements Listener {
 
     // ---------- шампанське: святковий бризок по блоку ----------
 
-    private final Map<UUID, Long> sprayCooldown = new HashMap<>();
+    private boolean isChampagne(ItemStack it) {
+        if (it == null || !it.hasItemMeta()) {
+            return false;
+        }
+        return "champagne".equals(it.getItemMeta().getPersistentDataContainer().get(kType, PersistentDataType.STRING));
+    }
 
+    /** Наповнення шампанського у відсотках: 100 = ціла пляшка, без спрею. */
+    private int champagneFill(ItemStack it) {
+        Integer f = it.getItemMeta().getPersistentDataContainer().get(kChampagneFill, PersistentDataType.INTEGER);
+        return f == null ? 100 : f;
+    }
+
+    /** Удар (ЛКМ) по блоку з шампанським: бризок, пляшка втрачає половину і більше не розпилюється. */
     @EventHandler
     public void onChampagneSpray(PlayerInteractEvent e) {
-        if (e.getHand() != EquipmentSlot.HAND || e.getAction() != Action.RIGHT_CLICK_BLOCK) {
+        if (e.getHand() != EquipmentSlot.HAND || e.getAction() != Action.LEFT_CLICK_BLOCK) {
             return;
         }
         ItemStack it = e.getItem();
-        if (it == null || !it.hasItemMeta()) {
+        if (!isChampagne(it)) {
             return;
         }
-        String type = it.getItemMeta().getPersistentDataContainer().get(kType, PersistentDataType.STRING);
-        if (!"champagne".equals(type)) {
-            return;
-        }
-        // клік по блоку — лише бризок: скасовуємо всю взаємодію, щоб ванільне "їсти" не стартувало
         e.setCancelled(true);
-
         Player p = e.getPlayer();
-        long now = System.currentTimeMillis();
-        int cooldown = Math.max(0, plugin.getConfig().getInt("drinks.champagne.cooldown-seconds", 3));
-        Long last = sprayCooldown.get(p.getUniqueId());
-        if (last != null && now - last < cooldown * 1000L) {
+        if (champagneFill(it) < 100) {
+            p.sendActionBar(Component.text("Шампанське вже розпилене, тільки випити", NamedTextColor.GRAY));
             return;
         }
-        sprayCooldown.put(p.getUniqueId(), now);
+        int left = Math.max(0, plugin.getConfig().getInt("drinks.champagne.fill-after-spray", 50));
+        ItemMeta meta = it.getItemMeta();
+        meta.getPersistentDataContainer().set(kChampagneFill, PersistentDataType.INTEGER, left);
+        it.setItemMeta(meta);
+        p.getInventory().setItemInMainHand(it);
         spray(p);
+    }
+
+    /** Шампанське не ламає блок, коли ним б'ють по блоку. */
+    @EventHandler
+    public void onChampagneBlockDamage(BlockDamageEvent e) {
+        if (isChampagne(e.getItemInHand())) {
+            e.setCancelled(true);
+        }
     }
 
     /** Бризок шампанського з очей гравця вперед; гравці поруч теж отримують бризки. */
