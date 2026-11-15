@@ -106,7 +106,9 @@ public final class WinterPlugin extends JavaPlugin implements Listener {
 
         PluginCommand bigCmd = getCommand("bighead");
         if (bigCmd != null) {
-            bigCmd.setExecutor(new BigHead(this));
+            BigHead bigHead = new BigHead();
+            bigCmd.setExecutor(bigHead);
+            getServer().getPluginManager().registerEvents(bigHead, this);
         }
 
         PluginCommand cmd = getCommand("forecast");
