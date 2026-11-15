@@ -5,6 +5,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.NamespacedKey;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -17,6 +18,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
@@ -60,6 +62,10 @@ public final class Sled implements Listener {
     private static final double DOWNHILL_ACCEL = 0.04;
     /** Максимальна швидкість санок. */
     private static final double MAX_SPEED = 1.2;
+    /** Найвища сходинка, на яку санки заїжджають (блоків). Вище — стіна. */
+    private static final double STEP_UP = 1.1;
+    /** Втрата швидкості при підйомі на сходинку (частка, більша за прискорення на спуску). */
+    private static final double UPHILL_LOSS = 0.1;
     /** Мінімальна швидкість, нижче якої санки зупиняються. */
     private static final double STOP_SPEED = 0.02;
     /** CustomModelData санок у ресурс-паку (assets/minecraft/items/oak_boat.json). */
@@ -200,6 +206,17 @@ public final class Sled implements Listener {
         }
     }
 
+    /** Пасажир санок не отримує шкоду від падіння (санки з'їжджають з гірки, а падає тільки сидячий). */
+    @EventHandler
+    public void onFall(EntityDamageEvent e) {
+        if (e.getCause() != EntityDamageEvent.DamageCause.FALL || !(e.getEntity() instanceof Player p)) {
+            return;
+        }
+        if (p.getVehicle() != null && isSledStand(p.getVehicle())) {
+            e.setCancelled(true);
+        }
+    }
+
     private void push(ArmorStand sled, Player p, double force) {
         Vector dir = p.getLocation().getDirection().setY(0);
         if (dir.lengthSquared() < 1e-6) {
@@ -323,11 +340,45 @@ public final class Sled implements Listener {
                 vx = 0;
                 vz = 0;
             }
+            if (hs > 0.01) {
+                // попереду: сходинка — заїжджаємо на неї з втратою швидкості; стіна — зупиняємо
+                double nx = bl.getX() + vx / hs * 0.6;
+                double nz = bl.getZ() + vz / hs * 0.6;
+                World w = bl.getWorld();
+                int bx = (int) Math.floor(nx);
+                int bz = (int) Math.floor(nz);
+                Block low = w.getBlockAt(bx, (int) Math.floor(bl.getY() - 0.5), bz);
+                Block high = w.getBlockAt(bx, (int) Math.floor(bl.getY() + 0.5), bz);
+                double aheadTop = Math.max(surfaceTop(low), surfaceTop(high));
+                if (!isSlidable(high.getType()) && high.getType().isSolid() && surfaceTop(high) > bl.getY() + STEP_UP) {
+                    vx = 0;
+                    vz = 0;
+                } else if (aheadTop > bl.getY() + 0.05 && aheadTop - bl.getY() <= STEP_UP) {
+                    sled.teleport(new Location(w, bl.getX(), aheadTop, bl.getZ(), bl.getYaw(), 0F));
+                    vx *= (1 - UPHILL_LOSS);
+                    vz *= (1 - UPHILL_LOSS);
+                } else if (aheadTop - bl.getY() > STEP_UP) {
+                    vx = 0;
+                    vz = 0;
+                }
+            }
             st[0] = vx;
             st[1] = vz;
             speed.put(entry.getKey(), st);
             sled.setVelocity(new Vector(vx, v.getY(), vz));
         }
+    }
+
+    /** Висота верхньої поверхні блока (для сходинок): сніг і лід — свій рівень, суцільний блок — повний, повітря — 0. */
+    private static double surfaceTop(Block b) {
+        Material m = b.getType();
+        if (m == Material.SNOW) {
+            return b.getY() + ((Snow) b.getBlockData()).getLayers() / 8.0;
+        }
+        if (isSlidable(m) || m.isSolid()) {
+            return b.getY() + 1.0;
+        }
+        return 0.0;
     }
 
     private boolean onSnow(Location loc) {
