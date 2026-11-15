@@ -15,6 +15,11 @@ commands:
     usage: /wl add|remove|list|reload [нік]
     permission: finalbreach.wl
     permission-message: Немає прав на цю команду.
+  bighead:
+    description: Пасхалка
+    usage: /bighead
+    permission: finalbreach.bighead
+    permission-message: Немає прав на цю команду.
   boiler:
     description: Котельня зі спільним запасом палива
     usage: /boiler set|unset|info
@@ -33,6 +38,9 @@ permissions:
   finalbreach.winter.admin:
     description: /forecast change, here, override, reload
     default: op
+  finalbreach.bighead:
+    description: Пасхалка /bighead
+    default: true
   finalbreach.winter.immune:
     description: Імунітет до холоду
     default: false
