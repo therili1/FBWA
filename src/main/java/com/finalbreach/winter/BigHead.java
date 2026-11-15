@@ -2,6 +2,8 @@ package com.finalbreach.winter;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -19,12 +21,14 @@ import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.UUID;
 
 /**
  * Пасхалка: /bighead робить велику голову з обличчям гравця над його головою.
  * Це окремий предмет-дисплей, прикріплений як пасажир, тож тіло гравця не змінюється.
+ * Голова повторює поворот (yaw/pitch) гравця. Власник її не бачить від першої особи.
  * Повторний виклик прибирає голову.
  */
 public final class BigHead implements CommandExecutor, Listener {
@@ -34,7 +38,13 @@ public final class BigHead implements CommandExecutor, Listener {
     /** Висота над макушкою, у блоках. Підлаштуй, якщо голова сидить низько або високо. */
     private static final float LIFT = 0.5F;
 
+    private final WinterPlugin plugin;
     private final Map<UUID, ItemDisplay> heads = new HashMap<>();
+
+    public BigHead(WinterPlugin plugin) {
+        this.plugin = plugin;
+        plugin.getServer().getScheduler().runTaskTimer(plugin, this::tick, 1L, 1L);
+    }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
@@ -62,12 +72,37 @@ public final class BigHead implements CommandExecutor, Listener {
                     new Quaternionf(),
                     new Vector3f(SCALE, SCALE, SCALE),
                     new Quaternionf()));
+            d.setInterpolationDuration(1);
             d.setPersistent(false);
         });
         p.addPassenger(display);
+        p.hideEntity(plugin, display); // власник не бачить свою голову від першої особи
         heads.put(p.getUniqueId(), display);
         p.sendMessage(Component.text("Біг хед мод увімкнено!", NamedTextColor.GOLD));
         return true;
+    }
+
+    /** Кожен тік повторює поворот голови гравця. */
+    private void tick() {
+        for (Iterator<Map.Entry<UUID, ItemDisplay>> it = heads.entrySet().iterator(); it.hasNext(); ) {
+            Map.Entry<UUID, ItemDisplay> e = it.next();
+            ItemDisplay d = e.getValue();
+            Player p = Bukkit.getPlayer(e.getKey());
+            if (p == null || !p.isOnline() || !d.isValid()) {
+                if (d.isValid()) {
+                    d.remove();
+                }
+                it.remove();
+                continue;
+            }
+            Location l = p.getLocation();
+            d.setRotation(l.getYaw(), 0F);
+            d.setTransformation(new Transformation(
+                    new Vector3f(0, LIFT, 0),
+                    new Quaternionf().rotateX((float) Math.toRadians(l.getPitch())),
+                    new Vector3f(SCALE, SCALE, SCALE),
+                    new Quaternionf()));
+        }
     }
 
     @EventHandler
