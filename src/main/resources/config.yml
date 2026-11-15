@@ -87,17 +87,6 @@ heat:
     - IRON_BLOCK                # тільки блоки заліза; працює через сусідство з піччю/бойлером (упритул)
   pipe-step: 0                 # крок труби: 0 = без відстанному спаду, 1 = як повітря
   pipe-leak: 0.05              # втрати тепла на кожен блок труби (менше за стіну)
-    - OAK_PLANKS
-    - SPRUCE_PLANKS
-    - BIRCH_PLANKS
-    - JUNGLE_PLANKS
-    - ACACIA_PLANKS
-    - DARK_OAK_PLANKS
-    - MANGROVE_PLANKS
-    - CHERRY_PLANKS
-    - BAMBOO_PLANKS
-    - CRIMSON_PLANKS
-    - WARPED_PLANKS
   max-cells: 700               # обсяг приміщення для ОДНІЄЇ печі (захист від лагів)
   reach-per-furnace: 3         # +стільки блоків дальності за кожну додаткову запалену піч у групі (і +max-cells на піч)
   # Печі, що торкаються гранями (і ланцюжком через інші печі), працюють як одна група:
