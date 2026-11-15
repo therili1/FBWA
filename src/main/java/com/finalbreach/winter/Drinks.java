@@ -156,6 +156,11 @@ public final class Drinks implements Listener {
         return Math.max(1, plugin.getConfig().getInt("drinks.sips", 4));
     }
 
+    /** Нижче цієї температури напій уже не дає ефектів (тепло й ситість). */
+    private int minEffectTemp() {
+        return plugin.getConfig().getInt("drinks.min-effect-temp", 40);
+    }
+
     private int fillMinTemp() {
         return plugin.getConfig().getInt("drinks.fill-min-temp", 40);
     }
@@ -474,6 +479,10 @@ public final class Drinks implements Listener {
     /** Ефект напою: сила і тривалість з рецепту, сила масштабується температурою. */
     private void effect(Player p, ItemStack it) {
         int t = getTemp(it);
+        if (t < minEffectTemp()) {
+            p.sendActionBar(Component.text("Напій остиг, ефекту немає", NamedTextColor.GRAY));
+            return;
+        }
         String type = it.getItemMeta().getPersistentDataContainer().get(kType, PersistentDataType.STRING);
         Recipe2 r = type == null ? null : recipes.get(type);
         double base = r != null ? r.power : 1.0;
