@@ -116,6 +116,7 @@ public final class WinterPlugin extends JavaPlugin implements Listener {
             ForecastCommand fc = new ForecastCommand(this);
             cmd.setExecutor(fc);
             cmd.setTabCompleter(fc);
+            getServer().getPluginManager().registerEvents(fc, this);
         }
 
         getServer().getScheduler().runTaskTimer(this, this::tickWeather, 20L, 20L);

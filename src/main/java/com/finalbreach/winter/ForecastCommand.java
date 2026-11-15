@@ -11,6 +11,9 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerJoinEvent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,12 +27,14 @@ import java.util.Locale;
  * /forecast override <t|off>     - (адмін) тестова фіксована температура для всіх
  * /forecast reload               - (адмін) перечитати config.yml
  */
-public final class ForecastCommand implements TabExecutor {
+public final class ForecastCommand implements TabExecutor, Listener {
 
     private static final String ADMIN = "finalbreach.winter.admin";
     private static final List<String> PRECIP = List.of("clear", "snow", "blizzard");
 
     private final WinterPlugin plugin;
+    /** Дистанція прорисовки чанків під час примусової хуртовини (/forecast storm viewdist). */
+    private volatile int stormViewDistance = 2;
 
     public ForecastCommand(WinterPlugin plugin) {
         this.plugin = plugin;
@@ -119,6 +124,17 @@ public final class ForecastCommand implements TabExecutor {
             return;
         }
         switch (args[1].toLowerCase(Locale.ROOT)) {
+            case "viewdist" -> {
+                if (args.length < 3 || parse(args[2]) == null) {
+                    sender.sendMessage(Component.text("Використання: /forecast storm viewdist <чанків, 2-32>", NamedTextColor.RED));
+                    return;
+                }
+                stormViewDistance = (int) Math.max(2, Math.min(32, Math.round(parse(args[2]))));
+                if (c.forcedStorm()) {
+                    applyView(w);
+                }
+                sender.sendMessage(Component.text("Дистанція чанків у хуртовину: " + stormViewDistance, NamedTextColor.AQUA));
+            }
             case "density" -> {
                 if (args.length < 3 || parse(args[2]) == null) {
                     sender.sendMessage(Component.text("Використання: /forecast storm density <кількість сніжинок за раз>", NamedTextColor.RED));
@@ -146,11 +162,13 @@ public final class ForecastCommand implements TabExecutor {
             case "on" -> {
                 c.setForcedStorm(true);
                 plugin.afterChange(w);
+                applyView(w);
                 sender.sendMessage(Component.text("Хуртовина ввімкнена, діє поки не вимкнеш.", NamedTextColor.AQUA));
             }
             case "off" -> {
                 c.setForcedStorm(false);
                 plugin.afterChange(w);
+                applyView(w);
                 sender.sendMessage(Component.text("Хуртовину вимкнено, погода повертається за прогнозом.", NamedTextColor.GREEN));
             }
             case "status" -> sender.sendMessage(Component.text(
@@ -159,6 +177,22 @@ public final class ForecastCommand implements TabExecutor {
                             + ", радіус " + fmt(plugin.snow().stormRadius())
                             + ", накопичення x" + fmt(plugin.snow().stormSnowMult(plugin.settings())), NamedTextColor.GRAY));
             default -> sender.sendMessage(Component.text("Використання: /forecast storm <on|off|status>", NamedTextColor.RED));
+        }
+    }
+
+    /** Ставить дистанцію чанків гравцям світу: у хуртовину stormViewDistance, інакше значення сервера (-1). */
+    private void applyView(World w) {
+        boolean storm = plugin.climate(w).forcedStorm();
+        for (Player p : w.getPlayers()) {
+            p.setSendViewDistance(storm ? stormViewDistance : -1);
+        }
+    }
+
+    @EventHandler
+    public void onJoinView(PlayerJoinEvent e) {
+        Player p = e.getPlayer();
+        if (plugin.isManaged(p.getWorld()) && plugin.climate(p.getWorld()).forcedStorm()) {
+            p.setSendViewDistance(stormViewDistance);
         }
     }
 
@@ -351,7 +385,7 @@ public final class ForecastCommand implements TabExecutor {
         } else if (args.length == 2 && args[0].equalsIgnoreCase("override")) {
             out.add("off");
         } else if (args.length == 2 && args[0].equalsIgnoreCase("storm")) {
-            out.addAll(List.of("on", "off", "status", "density", "radius", "snowrate"));
+            out.addAll(List.of("on", "off", "status", "density", "radius", "snowrate", "viewdist"));
         } else if (args.length == 2 && args[0].equalsIgnoreCase("change")) {
             out.addAll(List.of("reset", "-25", "-15", "-5", "0"));
         } else if (args.length == 3 && args[0].equalsIgnoreCase("change")) {
