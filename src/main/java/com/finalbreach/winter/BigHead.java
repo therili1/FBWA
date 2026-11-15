@@ -28,7 +28,7 @@ import java.util.UUID;
 /**
  * Пасхалка: /bighead робить велику голову з обличчям гравця над його головою.
  * Це окремий предмет-дисплей, прикріплений як пасажир, тож тіло гравця не змінюється.
- * Голова повторює поворот (yaw/pitch) гравця. Власник її не бачить від першої особи.
+ * Голова повторює поворот (yaw/pitch) гравця і видна власнику (у F5).
  * Повторний виклик прибирає голову.
  */
 public final class BigHead implements CommandExecutor, Listener {
@@ -76,7 +76,6 @@ public final class BigHead implements CommandExecutor, Listener {
             d.setPersistent(false);
         });
         p.addPassenger(display);
-        p.hideEntity(plugin, display); // власник не бачить свою голову від першої особи
         heads.put(p.getUniqueId(), display);
         p.sendMessage(Component.text("Біг хед мод увімкнено!", NamedTextColor.GOLD));
         return true;
