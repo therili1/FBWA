@@ -21,8 +21,10 @@ import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -40,6 +42,8 @@ public final class BigHead implements CommandExecutor, Listener {
 
     private final WinterPlugin plugin;
     private final Map<UUID, ItemDisplay> heads = new HashMap<>();
+    /** Гравці, які бачать власну голову (/bighead self). За замовчуванням ні. */
+    private final Set<UUID> selfVisible = new HashSet<>();
 
     public BigHead(WinterPlugin plugin) {
         this.plugin = plugin;
@@ -50,6 +54,25 @@ public final class BigHead implements CommandExecutor, Listener {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!(sender instanceof Player p)) {
             sender.sendMessage("Ця команда тільки для гравців.");
+            return true;
+        }
+        if (args.length > 0 && args[0].equalsIgnoreCase("self")) {
+            UUID id = p.getUniqueId();
+            boolean nowVisible = !selfVisible.contains(id);
+            if (nowVisible) {
+                selfVisible.add(id);
+            } else {
+                selfVisible.remove(id);
+            }
+            ItemDisplay active = heads.get(id);
+            if (active != null) {
+                if (nowVisible) {
+                    p.showEntity(plugin, active);
+                } else {
+                    p.hideEntity(plugin, active);
+                }
+            }
+            p.sendMessage(Component.text(nowVisible ? "Ти бачиш свою голову." : "Ти не бачиш свою голову.", NamedTextColor.GRAY));
             return true;
         }
         ItemDisplay old = heads.remove(p.getUniqueId());
@@ -76,6 +99,9 @@ public final class BigHead implements CommandExecutor, Listener {
             d.setPersistent(false);
         });
         p.addPassenger(display);
+        if (!selfVisible.contains(p.getUniqueId())) {
+            p.hideEntity(plugin, display);
+        }
         heads.put(p.getUniqueId(), display);
         p.sendMessage(Component.text("Біг хед мод увімкнено!", NamedTextColor.GOLD));
         return true;

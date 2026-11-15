@@ -38,6 +38,22 @@ public final class SnowSystem {
     /** Live-налаштування хуртовини (/forecast storm density|radius). -1 = з конфігу. */
     private volatile int stormDensityOverride = -1;
     private volatile double stormRadiusOverride = -1;
+    /** Сила вітру в хуртовину (/forecast storm wind). 0 = без вітру. -1 = стандартна. */
+    private volatile double stormWindOverride = -1;
+    /** Скільки сніжинок зносить вітром (окремі частинки з власною швидкістю). */
+    private static final int WIND_DRIFTERS = 300;
+    /** Напрямок вітру (нормований, по X і Z). */
+    private static final double WIND_X = 0.8;
+    private static final double WIND_Z = 0.6;
+
+    public void setStormWind(double w) {
+        this.stormWindOverride = Math.max(0.0, Math.min(5.0, w));
+    }
+
+    public double stormWind() {
+        return stormWindOverride >= 0 ? stormWindOverride : 0.6;
+    }
+
     /** Live-множник накопичення снігу в хуртовину (/forecast storm snowrate). -1 = з конфігу. */
     private volatile double stormSnowMultOverride = -1;
 
@@ -50,7 +66,7 @@ public final class SnowSystem {
     }
 
     public void setStormDensity(int n) {
-        this.stormDensityOverride = Math.max(1, Math.min(2000, n));
+        this.stormDensityOverride = Math.max(1, Math.min(50000, n));
     }
 
     public void setStormRadius(double r) {
@@ -299,6 +315,17 @@ public final class SnowSystem {
                 // Хуртовина: широка хмара снігу над гравцем, видна здалеку й крізь вікна (під дахом теж спавнимо)
                 double r = radius;
                 p.spawnParticle(Particle.SNOWFLAKE, l.getX(), l.getY() + 12.0, l.getZ(), n, r, 5.0, r, 0.0);
+                // вітер: частина сніжинок летить убік з власною швидкістю (count=0, offset = вектор швидкості)
+                double wind = stormWind();
+                if (wind > 0) {
+                    int drifters = Math.min(WIND_DRIFTERS, n);
+                    for (int i = 0; i < drifters; i++) {
+                        double x = l.getX() + (rnd.nextDouble() * 2.0 - 1.0) * r;
+                        double z = l.getZ() + (rnd.nextDouble() * 2.0 - 1.0) * r;
+                        double y = l.getY() + 6.0 + rnd.nextDouble() * 8.0;
+                        p.spawnParticle(Particle.SNOWFLAKE, x, y, z, 0, WIND_X * wind, -0.15, WIND_Z * wind, 0.0);
+                    }
+                }
                 continue;
             }
             for (int i = 0; i < n; i++) {
