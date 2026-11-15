@@ -118,6 +118,7 @@ public final class Settings {
     /** Труби: тепло йде по них без втрат (далі, ніж по повітрю), і самі гріють навколо. */
     public final Set<Material> pipes = new HashSet<>();
     public final int pipeStep;
+    public final double pipeLeak;
     public final int heaterSeconds;
     public final int magmaHeaterSeconds;
     public final int loreUpdate;
@@ -227,6 +228,7 @@ public final class Settings {
             }
         }
         pipeStep = Math.max(0, c.getInt("heat.pipe-step", 0));
+        pipeLeak = Math.max(0.0, c.getDouble("heat.pipe-leak", 0.05));
 
         heaterSeconds = Math.max(10, c.getInt("heater.duration-seconds", 600));
         magmaHeaterSeconds = Math.max(10, c.getInt("heater.magma-duration-seconds", 1800));

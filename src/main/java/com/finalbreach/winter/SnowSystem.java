@@ -153,6 +153,8 @@ public final class SnowSystem {
                 continue;
             }
             double t = c.temp(time, plugin.profile(top));
+            // опалення і труби гріють сніг навколо: беремо теплішу з температур
+            t = Math.max(t, plugin.heat().growthTemp(top));
             if (t >= 0.0 && rnd.nextDouble() < (1.0 + t) / 3.0) {
                 Column col = read(top);
                 if (col != null) {

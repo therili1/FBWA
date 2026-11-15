@@ -431,6 +431,9 @@ public final class HeatField implements Runnable {
                 boolean pipe = !pass && s.pipes.contains(b.getType());
                 if (pass || conductor || pipe) {
                     int step = pass ? 1 : (pipe ? s.pipeStep : CONDUCTOR_STEP);
+                    if (pipe) {
+                        leak += s.pipeLeak; // труба гріє, але трохи втрачає тепло на кожному блоці
+                    }
                     if (falloff(c[3] + step, s.heatDecay) < FALLOFF_CUTOFF || dist.size() >= maxCells) {
                         leak += 1.0; // межа пошуку = "відкритий простір"
                         continue;
