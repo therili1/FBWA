@@ -141,10 +141,10 @@ public final class Sled implements Listener {
         double top = surface.getType() == Material.SNOW
                 ? ((Snow) surface.getBlockData()).getLayers() / 8.0 : 1.0;
         Location loc = surface.getLocation().add(0.5, top, 0.5);
-        Boat sled = loc.getWorld().spawn(loc, Boat.class, b -> {
-            b.getPersistentDataContainer().set(sledKey, PersistentDataType.BYTE, (byte) 1);
-            b.setRotation(p.getLocation().getYaw(), 0F);
-        });
+        // Paper 26.3 не створює човни через клас Boat, тож беремо тип сутності
+        Boat sled = (Boat) loc.getWorld().spawnEntity(loc, org.bukkit.entity.EntityType.OAK_BOAT);
+        sled.getPersistentDataContainer().set(sledKey, PersistentDataType.BYTE, (byte) 1);
+        sled.setRotation(p.getLocation().getYaw(), 0F);
         sled.setVisibleByDefault(false); // човна не видно: показуємо модель санок
         ItemDisplay visual = loc.getWorld().spawn(loc, ItemDisplay.class, d -> {
             d.setItemStack(sledItem());
