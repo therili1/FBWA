@@ -321,7 +321,7 @@ public final class Drinks implements Listener {
         }
         brew.items.add(hand.getType());
         consumeOne(p, EquipmentSlot.HAND);
-        p.sendActionBar(Component.text("В казані: " + brew.items.size + "/" + max, NamedTextColor.GOLD));
+        p.sendActionBar(Component.text("В казані: " + brew.items.size() + "/" + max, NamedTextColor.GOLD));
     }
 
     private static String locKey(Location l) {
