@@ -124,7 +124,7 @@ public final class BigHead implements CommandExecutor, Listener {
             d.setRotation(l.getYaw() + 180F, 0F); // модель голови дивиться протилежно до гравця
             d.setTransformation(new Transformation(
                     new Vector3f(0, LIFT, 0),
-                    new Quaternionf().rotateX((float) Math.toRadians(l.getPitch())),
+                    new Quaternionf().rotateX((float) Math.toRadians(-l.getPitch())), // знак інвертовано: голова дивиться туди ж, що гравець
                     new Vector3f(SCALE, SCALE, SCALE),
                     new Quaternionf()));
         }
