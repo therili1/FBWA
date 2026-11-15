@@ -120,6 +120,10 @@ public final class WinterPlugin extends JavaPlugin implements Listener {
         }
 
         getServer().getScheduler().runTaskTimer(this, this::tickWeather, 20L, 20L);
+        Sled sled = new Sled(this);
+        getServer().getPluginManager().registerEvents(sled, this);
+        getServer().getScheduler().runTaskTimer(this, sled::tick, 1L, 1L);
+        sled.registerRecipe();
         getServer().getScheduler().runTaskTimer(this, heat, 20L, settings.heatEvery * 20L);
         getServer().getScheduler().runTaskTimer(this, cold, 25L, 10L);
         getServer().getScheduler().runTaskTimer(this, drinks::tick, 60L, 40L);
