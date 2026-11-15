@@ -165,6 +165,9 @@ drinks:
   brew-seconds: 20             # скільки секунд варити над запаленим багаттям
   max-ingredients: 4           # скільки інгредієнтів у казані
   compote-saturation: 3        # одноразова ситість від компоту (рівень 1-5)
+  champagne:
+    spray-seconds: 2           # скільки триває бризок при кліку по блоку
+    cooldown-seconds: 3        # пауза між бризками одного гравця
   coffee-saturation:
     level: 5                   # рівень ситості, яку дає кава (1-5)
     interval-seconds: 2        # як часто подавати ситість
@@ -195,6 +198,11 @@ drinks:
       ingredients: [COCOA_BEANS, SUGAR, WATER_BUCKET, COCOA_BEANS]
       power: 0.8
       seconds: 90
+    champagne:
+      name: "Шампанське"
+      ingredients: [SUGAR, SUGAR, SWEET_BERRIES, WATER_BUCKET]
+      power: 0.0               # без тепла
+      seconds: 0
     compote:
       name: "Компот"
       ingredients: [SWEET_BERRIES, SWEET_BERRIES, SUGAR, WATER_BUCKET]

@@ -13,7 +13,11 @@ import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.Keyed;
+import org.bukkit.Color;
 import org.bukkit.Location;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
+import org.bukkit.util.Vector;
 import org.bukkit.Registry;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -43,6 +47,7 @@ import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
 import java.util.ArrayList;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -478,12 +483,17 @@ public final class Drinks implements Listener {
 
     /** Ефект напою: сила і тривалість з рецепту, сила масштабується температурою. */
     private void effect(Player p, ItemStack it) {
+        String type = it.getItemMeta().getPersistentDataContainer().get(kType, PersistentDataType.STRING);
+        if ("champagne".equals(type)) {
+            // шампанське холодне: без тепла, зате короткий приріст швидкості
+            p.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 20 * 20, 0, false, false, true));
+            return;
+        }
         int t = getTemp(it);
         if (t < minEffectTemp()) {
             p.sendActionBar(Component.text("Напій остиг, ефекту немає", NamedTextColor.GRAY));
             return;
         }
-        String type = it.getItemMeta().getPersistentDataContainer().get(kType, PersistentDataType.STRING);
         Recipe2 r = type == null ? null : recipes.get(type);
         double base = r != null ? r.power : 1.0;
         int seconds = r != null ? r.seconds : 180;
@@ -499,6 +509,77 @@ public final class Drinks implements Listener {
             int lvl = Math.max(1, Math.min(5, plugin.getConfig().getInt("drinks.compote-saturation", 3)));
             p.addPotionEffect(new PotionEffect(PotionEffectType.SATURATION, 1, lvl - 1, false, false, false));
         }
+    }
+
+    // ---------- шампанське: святковий бризок по блоку ----------
+
+    private final Map<UUID, Long> sprayCooldown = new HashMap<>();
+
+    @EventHandler
+    public void onChampagneSpray(PlayerInteractEvent e) {
+        if (e.getHand() != EquipmentSlot.HAND || e.getAction() != Action.RIGHT_CLICK_BLOCK) {
+            return;
+        }
+        ItemStack it = e.getItem();
+        if (it == null || !it.hasItemMeta()) {
+            return;
+        }
+        String type = it.getItemMeta().getPersistentDataContainer().get(kType, PersistentDataType.STRING);
+        if (!"champagne".equals(type)) {
+            return;
+        }
+        // клік по блоку — бризок, а не пиття і не установка
+        e.setUseItemInHand(Event.Result.DENY);
+        e.setUseInteractedBlock(Event.Result.DENY);
+
+        Player p = e.getPlayer();
+        long now = System.currentTimeMillis();
+        int cooldown = Math.max(0, plugin.getConfig().getInt("drinks.champagne.cooldown-seconds", 3));
+        Long last = sprayCooldown.get(p.getUniqueId());
+        if (last != null && now - last < cooldown * 1000L) {
+            return;
+        }
+        sprayCooldown.put(p.getUniqueId(), now);
+        spray(p);
+    }
+
+    /** Бризок шампанського з очей гравця вперед; гравці поруч теж отримують бризки. */
+    private void spray(Player p) {
+        int ticks = Math.max(1, plugin.getConfig().getInt("drinks.champagne.spray-seconds", 2)) * 20;
+        Particle.DustOptions gold = new Particle.DustOptions(Color.fromRGB(255, 215, 90), 1.2F);
+        Particle.DustOptions white = new Particle.DustOptions(Color.fromRGB(255, 250, 230), 1.0F);
+        p.getWorld().playSound(p.getEyeLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 1.0F, 1.2F);
+        new BukkitRunnable() {
+            int t = 0;
+
+            @Override
+            public void run() {
+                if (!p.isOnline() || t >= ticks) {
+                    cancel();
+                    return;
+                }
+                ThreadLocalRandom rnd = ThreadLocalRandom.current();
+                Location eye = p.getEyeLocation();
+                Vector dir = eye.getDirection();
+                for (int i = 0; i < 12; i++) {
+                    double dist = 1.0 + rnd.nextDouble() * 4.0;
+                    Location pos = eye.clone().add(dir.clone().multiply(dist));
+                    pos.add((rnd.nextDouble() - 0.5) * 0.8, (rnd.nextDouble() - 0.5) * 0.8, (rnd.nextDouble() - 0.5) * 0.8);
+                    p.getWorld().spawnParticle(Particle.DUST, pos, 1, 0, 0, 0, 0, i % 2 == 0 ? gold : white);
+                }
+                // гравці поруч "обливаються"
+                for (Player other : p.getWorld().getPlayers()) {
+                    if (other.equals(p) || other.getLocation().distanceSquared(p.getLocation()) > 36.0) {
+                        continue;
+                    }
+                    other.getWorld().spawnParticle(Particle.DUST, other.getLocation().add(0, 1.2, 0), 6, 0.3, 0.4, 0.3, 0, gold);
+                }
+                if (t % 10 == 0) {
+                    p.getWorld().playSound(eye, Sound.ENTITY_PLAYER_SPLASH, 0.6F, 1.4F);
+                }
+                t++;
+            }
+        }.runTaskTimer(plugin, 0L, 1L);
     }
 
     /** Кава: ситість подається кожні кілька секунд протягом заданого часу. Новий ковток перезапускає таймер. */
