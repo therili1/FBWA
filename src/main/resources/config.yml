@@ -163,7 +163,7 @@ drinks:
   fill-min-temp: 40            # мінімальна температура напою, щоб налити в термос
   min-effect-temp: 40          # нижче цієї температури напій не дає ефектів
   brew-seconds: 20             # скільки секунд варити над запаленим багаттям
-  max-ingredients: 4           # скільки інгредієнтів у казані
+  max-ingredients: 10          # скільки інгредієнтів у казані
   compote-saturation: 3        # одноразова ситість від компоту (рівень 1-5)
   champagne:
     spray-seconds: 2           # скільки триває бризок при ударі (ЛКМ) по блоку
@@ -200,7 +200,7 @@ drinks:
       seconds: 90
     champagne:
       name: "Шампанське"
-      ingredients: [SUGAR, SUGAR, SWEET_BERRIES, WATER_BUCKET]
+      ingredients: [SUGAR, GLOW_BERRIES, WATER_BUCKET]
       power: 0.0               # без тепла
       seconds: 0
     compote:

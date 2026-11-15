@@ -309,10 +309,11 @@ public final class Drinks implements Listener {
         return false;
     }
 
+    /** Рецепт визначається за набором видів інгредієнтів; скільки кожного покладено — не важливо, все йде у відвар. */
     private Recipe2 matchRecipe(List<Material> items) {
-        List<String> have = items.stream().map(Enum::name).sorted().toList();
+        Set<String> have = items.stream().map(Enum::name).collect(java.util.stream.Collectors.toSet());
         for (Recipe2 r : recipes.values()) {
-            List<String> need = r.ingredients.stream().map(Enum::name).sorted().toList();
+            Set<String> need = r.ingredients.stream().map(Enum::name).collect(java.util.stream.Collectors.toSet());
             if (need.equals(have)) {
                 return r;
             }
@@ -354,6 +355,11 @@ public final class Drinks implements Listener {
         }
         brew.items.add(hand.getType());
         consumeOne(p, EquipmentSlot.HAND);
+        if (hand.getType() == Material.MILK_BUCKET || hand.getType() == Material.WATER_BUCKET) {
+            // відро з рідиною переливається в казан, порожнє відро повертається гравцю
+            p.getInventory().addItem(new ItemStack(Material.BUCKET)).values()
+                    .forEach(left -> p.getWorld().dropItemNaturally(p.getLocation(), left));
+        }
         p.sendActionBar(Component.text("В казані: " + brew.items.size() + "/" + max, NamedTextColor.GOLD));
     }
 
