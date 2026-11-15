@@ -202,7 +202,8 @@ public final class Drinks implements Listener {
     // ---------- предмети ----------
 
     /** Напої з власною моделлю і текстурою (CMD 1101..1105); інші типи лишаються на загальному кухлі 1001. */
-    static final List<String> DRINK_MODELS = List.of("hot_chocolate", "herbal_tea", "ginger_tea", "mulled_wine", "coffee");
+    static final List<String> DRINK_MODELS = List.of(
+            "hot_chocolate", "herbal_tea", "ginger_tea", "mulled_wine", "coffee", "compote", "champagne");
 
     static int drinkModelData(String type) {
         int i = DRINK_MODELS.indexOf(type);
