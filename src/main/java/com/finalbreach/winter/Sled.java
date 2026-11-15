@@ -68,6 +68,8 @@ public final class Sled implements Listener {
     private static final double UPHILL_LOSS_PER_BLOCK = 0.25;
     /** Як далеко вперед дивимося, щоб помітити сходинку до зіткнення. */
     private static final double LOOKAHEAD = 1.0;
+    /** Вертикальний імпульс на краю рампи: скільки вгору за кожну одиницю горизонтальної швидкості. */
+    private static final double LAUNCH_FACTOR = 0.35;
     /** Мінімальна швидкість, нижче якої санки зупиняються. */
     private static final double STOP_SPEED = 0.02;
     /** CustomModelData санок у ресурс-паку (assets/minecraft/items/oak_boat.json). */
@@ -345,6 +347,7 @@ public final class Sled implements Listener {
                 vx = 0;
                 vz = 0;
             }
+            double launchVy = Double.NaN;
             if (hs > 0.01) {
                 // попереду: сходинка — заїжджаємо на неї з втратою швидкості пропорційно висоті; стіна — зупиняє
                 double nx = bl.getX() + vx / hs * LOOKAHEAD;
@@ -356,6 +359,10 @@ public final class Sled implements Listener {
                 Block high = w.getBlockAt(bx, (int) Math.floor(bl.getY() + 0.5), bz);
                 double aheadTop = Math.max(surfaceTop(low), surfaceTop(high));
                 double step = aheadTop - bl.getY();
+                if (aheadTop == 0.0 && sled.isOnGround() && hs > 0.3) {
+                    // попереду порожнеча (край рампи або обрив): розбіг підкидає санки вгору по інерції
+                    launchVy = hs * LAUNCH_FACTOR;
+                }
                 boolean wall = !isSlidable(high.getType()) && high.getType().isSolid() && step > STEP_UP;
                 if (wall || step > STEP_UP) {
                     vx = 0;
@@ -370,7 +377,7 @@ public final class Sled implements Listener {
             st[0] = vx;
             st[1] = vz;
             speed.put(entry.getKey(), st);
-            sled.setVelocity(new Vector(vx, v.getY(), vz));
+            sled.setVelocity(new Vector(vx, Double.isNaN(launchVy) ? v.getY() : launchVy, vz));
         }
     }
 
