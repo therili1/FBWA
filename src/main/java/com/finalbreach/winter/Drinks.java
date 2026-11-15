@@ -188,11 +188,19 @@ public final class Drinks implements Listener {
 
     // ---------- предмети ----------
 
+    /** Напої з власною моделлю і текстурою (CMD 1101..1105); інші типи лишаються на загальному кухлі 1001. */
+    static final List<String> DRINK_MODELS = List.of("hot_chocolate", "herbal_tea", "ginger_tea", "mulled_wine", "coffee");
+
+    static int drinkModelData(String type) {
+        int i = DRINK_MODELS.indexOf(type);
+        return i < 0 ? 1001 : 1101 + i;
+    }
+
     public ItemStack makeDrink(String type, int temp) {
         ItemStack it = new ItemStack(Material.HONEY_BOTTLE);
         ItemMeta m = it.getItemMeta();
         m.displayName(Component.text(displayName(type), NamedTextColor.GOLD));
-        m.setCustomModelData(1001);
+        m.setCustomModelData(drinkModelData(type));
         PersistentDataContainer c = m.getPersistentDataContainer();
         c.set(kType, PersistentDataType.STRING, type);
         c.set(kTemp, PersistentDataType.INTEGER, temp);
