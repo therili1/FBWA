@@ -64,8 +64,10 @@ public final class Sled implements Listener {
     private static final double MAX_SPEED = 1.2;
     /** Найвища сходинка, на яку санки заїжджають (блоків). Вище — стіна. */
     private static final double STEP_UP = 1.1;
-    /** Втрата швидкості при підйомі на сходинку (частка, більша за прискорення на спуску). */
-    private static final double UPHILL_LOSS = 0.1;
+    /** Втрата швидкості на кожен блок підйому (пів блока = половина цієї втрати). */
+    private static final double UPHILL_LOSS_PER_BLOCK = 0.25;
+    /** Як далеко вперед дивимося, щоб помітити сходинку до зіткнення. */
+    private static final double LOOKAHEAD = 1.0;
     /** Мінімальна швидкість, нижче якої санки зупиняються. */
     private static final double STOP_SPEED = 0.02;
     /** CustomModelData санок у ресурс-паку (assets/minecraft/items/oak_boat.json). */
@@ -245,6 +247,9 @@ public final class Sled implements Listener {
         }
         cancel.setCancelled(true);
         ArmorStand sled = (ArmorStand) entity;
+        if (!sled.isValid()) {
+            return; // подія прийшла повторно, санки вже підібрані або сидимо
+        }
         if (!sled.getPassengers().isEmpty()) {
             return; // вже хтось сидить
         }
@@ -341,25 +346,25 @@ public final class Sled implements Listener {
                 vz = 0;
             }
             if (hs > 0.01) {
-                // попереду: сходинка — заїжджаємо на неї з втратою швидкості; стіна — зупиняємо
-                double nx = bl.getX() + vx / hs * 0.6;
-                double nz = bl.getZ() + vz / hs * 0.6;
+                // попереду: сходинка — заїжджаємо на неї з втратою швидкості пропорційно висоті; стіна — зупиняє
+                double nx = bl.getX() + vx / hs * LOOKAHEAD;
+                double nz = bl.getZ() + vz / hs * LOOKAHEAD;
                 World w = bl.getWorld();
                 int bx = (int) Math.floor(nx);
                 int bz = (int) Math.floor(nz);
                 Block low = w.getBlockAt(bx, (int) Math.floor(bl.getY() - 0.5), bz);
                 Block high = w.getBlockAt(bx, (int) Math.floor(bl.getY() + 0.5), bz);
                 double aheadTop = Math.max(surfaceTop(low), surfaceTop(high));
-                if (!isSlidable(high.getType()) && high.getType().isSolid() && surfaceTop(high) > bl.getY() + STEP_UP) {
+                double step = aheadTop - bl.getY();
+                boolean wall = !isSlidable(high.getType()) && high.getType().isSolid() && step > STEP_UP;
+                if (wall || step > STEP_UP) {
                     vx = 0;
                     vz = 0;
-                } else if (aheadTop > bl.getY() + 0.05 && aheadTop - bl.getY() <= STEP_UP) {
+                } else if (step > 0.05) {
                     sled.teleport(new Location(w, bl.getX(), aheadTop, bl.getZ(), bl.getYaw(), 0F));
-                    vx *= (1 - UPHILL_LOSS);
-                    vz *= (1 - UPHILL_LOSS);
-                } else if (aheadTop - bl.getY() > STEP_UP) {
-                    vx = 0;
-                    vz = 0;
+                    double keep = Math.max(0.0, 1.0 - UPHILL_LOSS_PER_BLOCK * step);
+                    vx *= keep;
+                    vz *= keep;
                 }
             }
             st[0] = vx;
