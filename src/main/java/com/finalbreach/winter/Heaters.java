@@ -98,7 +98,6 @@ public final class Heaters {
         }
         clearTags(meta);
         if (magma) {
-            meta.displayName(Component.text("Магматична грілка", NamedTextColor.GOLD));
         }
 
         PersistentDataContainer c = meta.getPersistentDataContainer();

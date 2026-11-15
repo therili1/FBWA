@@ -211,6 +211,7 @@ public final class Boiler implements Listener, CommandExecutor {
         ItemStack held = p.getInventory().getItemInMainHand();
         int secs = fuelSeconds(held.getType());
         if (secs <= 0) {
+            p.sendActionBar(Component.text("Це не паливо для котельні (потрібно відро лави, вугілля або блейз-стрижень)", NamedTextColor.RED));
             return;
         }
         e.setCancelled(true);
