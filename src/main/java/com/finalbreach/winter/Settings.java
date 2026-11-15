@@ -53,6 +53,7 @@ public final class Settings {
     public final double blizzardChance;
     public final double snowMod;
     public final double blizzardMod;
+    public final double forcedBlizzardMod;
 
     // холод
     public final double grace;
@@ -157,6 +158,7 @@ public final class Settings {
         blizzardChance = c.getDouble("precipitation.blizzard-chance", 0.10);
         snowMod = c.getDouble("precipitation.snow-temp-modifier", -1);
         blizzardMod = c.getDouble("precipitation.blizzard-temp-modifier", -4);
+        forcedBlizzardMod = c.getDouble("precipitation.forced-blizzard-temp-modifier", -8);
 
         grace = Math.max(0, c.getDouble("cold.grace-seconds", 15));
         baseInterval = Math.max(0.5, c.getDouble("cold.base-interval-seconds", 10.0));

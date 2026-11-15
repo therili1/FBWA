@@ -37,6 +37,7 @@ precipitation:
   blizzard-chance: 0.10        # шанс хуртовини на відрізок
   snow-temp-modifier: -1       # на скільки градусів холодніше під час снігу
   blizzard-temp-modifier: -4   # на скільки градусів холодніше під час хуртовини
+  forced-blizzard-temp-modifier: -8  # те саме, але для примусової хуртовини (/forecast storm on)
 
 cold:
   grace-seconds: 15            # скільки секунд можна мерзнути, поки не піде шкода

@@ -40,7 +40,7 @@ public final class ForecastCommand implements TabExecutor {
         if (args.length >= 1) {
             String sub = args[0].toLowerCase(Locale.ROOT);
             switch (sub) {
-                case "reload", "override", "change", "here" -> {
+                case "reload", "override", "change", "here", "storm" -> {
                     if (!sender.hasPermission(ADMIN)) {
                         sender.sendMessage(Component.text("Немає прав.", NamedTextColor.RED));
                         return true;
@@ -49,6 +49,7 @@ public final class ForecastCommand implements TabExecutor {
                         case "reload" -> reload(sender);
                         case "override" -> override(sender, args);
                         case "change" -> change(sender, args);
+                        case "storm" -> storm(sender, args);
                         default -> here(sender);
                     }
                     return true;
@@ -104,6 +105,34 @@ public final class ForecastCommand implements TabExecutor {
         }
         plugin.setOverrideTemp(t);
         sender.sendMessage(Component.text("Тестова температура: " + t + "°C для всіх гравців.", NamedTextColor.YELLOW));
+    }
+
+    private void storm(CommandSender sender, String[] args) {
+        World w = targetWorld(sender);
+        if (w == null) {
+            sender.sendMessage(Component.text("У цьому світі зимової системи немає.", NamedTextColor.GRAY));
+            return;
+        }
+        Climate c = plugin.climate(w);
+        if (args.length < 2) {
+            sender.sendMessage(Component.text("Використання: /forecast storm <on|off|status>", NamedTextColor.RED));
+            return;
+        }
+        switch (args[1].toLowerCase(Locale.ROOT)) {
+            case "on" -> {
+                c.setForcedStorm(true);
+                plugin.afterChange(w);
+                sender.sendMessage(Component.text("Хуртовина ввімкнена, діє поки не вимкнеш.", NamedTextColor.AQUA));
+            }
+            case "off" -> {
+                c.setForcedStorm(false);
+                plugin.afterChange(w);
+                sender.sendMessage(Component.text("Хуртовину вимкнено, погода повертається за прогнозом.", NamedTextColor.GREEN));
+            }
+            case "status" -> sender.sendMessage(Component.text(
+                    "Примусова хуртовина: " + (c.forcedStorm() ? "увімкнена" : "вимкнена"), NamedTextColor.GRAY));
+            default -> sender.sendMessage(Component.text("Використання: /forecast storm <on|off|status>", NamedTextColor.RED));
+        }
     }
 
     private void change(CommandSender sender, String[] args) {
@@ -287,13 +316,15 @@ public final class ForecastCommand implements TabExecutor {
             return out;
         }
         if (args.length == 1) {
-            for (String o : List.of("change", "here", "override", "reload")) {
+            for (String o : List.of("change", "here", "override", "reload", "storm")) {
                 if (o.startsWith(args[0].toLowerCase(Locale.ROOT))) {
                     out.add(o);
                 }
             }
         } else if (args.length == 2 && args[0].equalsIgnoreCase("override")) {
             out.add("off");
+        } else if (args.length == 2 && args[0].equalsIgnoreCase("storm")) {
+            out.addAll(List.of("on", "off", "status"));
         } else if (args.length == 2 && args[0].equalsIgnoreCase("change")) {
             out.addAll(List.of("reset", "-25", "-15", "-5", "0"));
         } else if (args.length == 3 && args[0].equalsIgnoreCase("change")) {

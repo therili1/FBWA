@@ -49,6 +49,9 @@ public final class Climate {
     private final double blizzardChance;
     private final double snowMod;
     private final double blizzardMod;
+    private final double forcedBlizzardMod;
+    /** Адмінська хуртовина на весь час, поки ввімкнено (для зйомок). Не зберігається між перезапусками. */
+    private boolean forcedStorm;
     private final long recoveryTicks;
     private final List<Change> changes = new ArrayList<>();
 
@@ -63,6 +66,7 @@ public final class Climate {
         this.blizzardChance = s.blizzardChance;
         this.snowMod = s.snowMod;
         this.blizzardMod = s.blizzardMod;
+        this.forcedBlizzardMod = s.forcedBlizzardMod;
         this.recoveryTicks = Math.max(1L, Math.round(s.recoveryDays * DAY));
     }
 
@@ -184,14 +188,25 @@ public final class Climate {
     private double mod(Precip p) {
         return switch (p) {
             case SNOW -> snowMod;
-            case BLIZZARD -> blizzardMod;
+            case BLIZZARD -> forcedStorm ? forcedBlizzardMod : blizzardMod;
             default -> 0.0;
         };
     }
 
     // ---------- опади ----------
 
+    public void setForcedStorm(boolean on) {
+        this.forcedStorm = on;
+    }
+
+    public boolean forcedStorm() {
+        return forcedStorm;
+    }
+
     public Precip precip(long day, int idx) {
+        if (forcedStorm) {
+            return Precip.BLIZZARD;
+        }
         long start = slotStartAbs(day, idx);
         long end = slotEndAbs(day, idx);
         for (int i = changes.size() - 1; i >= 0; i--) {
