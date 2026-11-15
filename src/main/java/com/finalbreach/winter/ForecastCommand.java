@@ -279,6 +279,11 @@ public final class ForecastCommand implements TabExecutor, Listener {
 
     // ---------- прогноз ----------
 
+    private static Component windText(Climate.Wind wd) {
+        return Component.text(wd.dirName() + " вітер, " + fmt(wd.speed()) + " м/с (" + wd.level() + ")",
+                NamedTextColor.AQUA);
+    }
+
     private void show(CommandSender s, World w) {
         Settings cfg = plugin.settings();
         Climate c = plugin.climate(w);
@@ -294,6 +299,8 @@ public final class ForecastCommand implements TabExecutor, Listener {
                 .append(Component.text(fmt(temp), tempColor(temp)))
                 .append(Component.text("  "))
                 .append(precipText(cur.precip(), true)));
+        s.sendMessage(Component.text("Вітер: ", NamedTextColor.GRAY)
+                .append(windText(c.windAt(now))));
         if (plugin.overrideTemp() != null) {
             s.sendMessage(Component.text("Увімкнена тестова температура (/forecast override off, щоб вимкнути).",
                     NamedTextColor.DARK_GRAY));
@@ -308,7 +315,9 @@ public final class ForecastCommand implements TabExecutor, Listener {
                                 + " " + e.name() + ": ", NamedTextColor.GRAY)
                         .append(rangeText(r))
                         .append(Component.text("  "))
-                        .append(precipText(e.precip(), true)));
+                        .append(precipText(e.precip(), true))
+                        .append(Component.text("  "))
+                        .append(windText(c.wind(cur.day(), i))));
             }
         }
 

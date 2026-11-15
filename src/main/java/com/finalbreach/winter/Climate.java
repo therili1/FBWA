@@ -36,6 +36,32 @@ public final class Climate {
 
     public record Entry(long day, int index, String name, int fromTick, int toTick, Precip precip) {}
 
+    /**
+     * Вітер: speed у м/с, fromDeg — звідки дме (0 = з півночі, за годинниковою стрілкою).
+     */
+    public record Wind(double speed, double fromDeg, String dirName) {
+        /** Куди несе вітер (x, z), у блоці Minecraft: північ = -Z. */
+        public double blowX() {
+            return -Math.sin(Math.toRadians(fromDeg));
+        }
+
+        public double blowZ() {
+            return Math.cos(Math.toRadians(fromDeg));
+        }
+
+        public String level() {
+            if (speed < 2) return "штиль";
+            if (speed < 6) return "слабкий";
+            if (speed < 12) return "помірний";
+            if (speed < 18) return "сильний";
+            return "шторм";
+        }
+    }
+
+    private static final String[] WIND_NAMES = {
+            "північний", "північно-східний", "східний", "південно-східний",
+            "південний", "південно-західний", "західний", "північно-західний"};
+
     /** Адмінська зміна: зсув температури (з плавним входом/виходом) і, за бажанням, примусові опади. */
     public record Change(long at, double offset, Precip precip, long until) {}
 
@@ -201,6 +227,24 @@ public final class Climate {
 
     public boolean forcedStorm() {
         return forcedStorm;
+    }
+
+    /** Вітер на відрізку доби (детерміновано від сіду): у хуртовину сильніший. */
+    public Wind wind(long day, int idx) {
+        Precip p = precip(day, idx);
+        double speed = rnd(3, day, idx) * 6.0;
+        if (p == Precip.SNOW) {
+            speed += 3.0;
+        } else if (p == Precip.BLIZZARD) {
+            speed = 12.0 + rnd(5, day, idx) * 8.0;
+        }
+        int k = (int) (rnd(4, day, idx) * 8) % 8;
+        return new Wind(speed, k * 45.0, WIND_NAMES[k]);
+    }
+
+    public Wind windAt(long fullTime) {
+        Entry e = at(fullTime);
+        return wind(e.day(), e.index());
     }
 
     public Precip precip(long day, int idx) {

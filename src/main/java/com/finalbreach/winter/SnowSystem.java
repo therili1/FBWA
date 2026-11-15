@@ -42,9 +42,6 @@ public final class SnowSystem {
     private volatile double stormWindOverride = -1;
     /** Скільки сніжинок зносить вітром (окремі частинки з власною швидкістю). */
     private static final int WIND_DRIFTERS = 300;
-    /** Напрямок вітру (нормований, по X і Z). */
-    private static final double WIND_X = 0.8;
-    private static final double WIND_Z = 0.6;
 
     public void setStormWind(double w) {
         this.stormWindOverride = Math.max(0.0, Math.min(5.0, w));
@@ -317,13 +314,14 @@ public final class SnowSystem {
                 p.spawnParticle(Particle.SNOWFLAKE, l.getX(), l.getY() + 12.0, l.getZ(), n, r, 5.0, r, 0.0);
                 // вітер: частина сніжинок летить убік з власною швидкістю (count=0, offset = вектор швидкості)
                 double wind = stormWind();
+                Climate.Wind fc = plugin.climate(w).windAt(w.getFullTime());
                 if (wind > 0) {
                     int drifters = Math.min(WIND_DRIFTERS, n);
                     for (int i = 0; i < drifters; i++) {
                         double x = l.getX() + (rnd.nextDouble() * 2.0 - 1.0) * r;
                         double z = l.getZ() + (rnd.nextDouble() * 2.0 - 1.0) * r;
                         double y = l.getY() + 6.0 + rnd.nextDouble() * 8.0;
-                        p.spawnParticle(Particle.SNOWFLAKE, x, y, z, 0, WIND_X * wind, -0.15, WIND_Z * wind, 0.0);
+                        p.spawnParticle(Particle.SNOWFLAKE, x, y, z, 0, fc.blowX() * wind, -0.15, fc.blowZ() * wind, 0.0);
                     }
                 }
                 continue;
