@@ -309,9 +309,16 @@ public final class SnowSystem {
             double wind = storm ? 0.9 : 0.12;
             Location l = p.getLocation();
             if (storm) {
-                // Хуртовина: широка хмара снігу над гравцем, видна здалеку й крізь вікна (під дахом теж спавнимо)
+                // Хуртовина: хмара снігу в смузі між землею і рівнем гравця; під дахом не спавнимо (сніг не пробиває дах)
+                int top = w.getHighestBlockYAt(l, HeightMap.MOTION_BLOCKING);
+                if (top > l.getBlockY() + 2) {
+                    continue;
+                }
                 double r = radius;
-                p.spawnParticle(Particle.SNOWFLAKE, l.getX(), l.getY() + 12.0, l.getZ(), n, r, 5.0, r, 0.0);
+                double yMin = Math.max(top + 1.0, l.getY() - 8.0);
+                double yMax = Math.max(yMin + 1.0, l.getY() + 5.0);
+                double cy = (yMin + yMax) / 2.0;
+                p.spawnParticle(Particle.SNOWFLAKE, l.getX(), cy, l.getZ(), n, r, (yMax - yMin) / 2.0, r, 0.0);
                 // вітер: частина сніжинок летить убік з власною швидкістю (count=0, offset = вектор швидкості)
                 double strength = stormWind();
                 Climate.Wind fc = plugin.climate(w).windAt(w.getFullTime());
@@ -320,7 +327,7 @@ public final class SnowSystem {
                     for (int i = 0; i < drifters; i++) {
                         double x = l.getX() + (rnd.nextDouble() * 2.0 - 1.0) * r;
                         double z = l.getZ() + (rnd.nextDouble() * 2.0 - 1.0) * r;
-                        double y = l.getY() + 6.0 + rnd.nextDouble() * 8.0;
+                        double y = yMin + rnd.nextDouble() * (yMax - yMin);
                         p.spawnParticle(Particle.SNOWFLAKE, x, y, z, 0, fc.blowX() * strength, -0.15, fc.blowZ() * strength, 0.0);
                     }
                 }
