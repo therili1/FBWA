@@ -115,6 +115,9 @@ public final class Settings {
 
     // грілки
     public final Set<Material> conductors = new HashSet<>();
+    /** Труби: тепло йде по них без втрат (далі, ніж по повітрю), і самі гріють навколо. */
+    public final Set<Material> pipes = new HashSet<>();
+    public final int pipeStep;
     public final int heaterSeconds;
     public final int magmaHeaterSeconds;
     public final int loreUpdate;
@@ -217,6 +220,13 @@ public final class Settings {
                 conductors.add(mat);
             }
         }
+        for (String name : c.getStringList("heat.pipes")) {
+            Material mat = Material.matchMaterial(name);
+            if (mat != null) {
+                pipes.add(mat);
+            }
+        }
+        pipeStep = Math.max(0, c.getInt("heat.pipe-step", 0));
 
         heaterSeconds = Math.max(10, c.getInt("heater.duration-seconds", 600));
         magmaHeaterSeconds = Math.max(10, c.getInt("heater.magma-duration-seconds", 1800));

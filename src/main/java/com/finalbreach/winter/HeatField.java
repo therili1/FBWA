@@ -428,8 +428,9 @@ public final class HeatField implements Runnable {
                 Block b = w.getBlockAt(nx, ny, nz);
                 boolean pass = b.isPassable() && !b.isLiquid();
                 boolean conductor = !pass && s.conductors.contains(b.getType());
-                if (pass || conductor) {
-                    int step = pass ? 1 : CONDUCTOR_STEP;
+                boolean pipe = !pass && s.pipes.contains(b.getType());
+                if (pass || conductor || pipe) {
+                    int step = pass ? 1 : (pipe ? s.pipeStep : CONDUCTOR_STEP);
                     if (falloff(c[3] + step, s.heatDecay) < FALLOFF_CUTOFF || dist.size() >= maxCells) {
                         leak += 1.0; // межа пошуку = "відкритий простір"
                         continue;
