@@ -68,6 +68,8 @@ public final class Sled implements Listener {
     private static final double UPHILL_LOSS_PER_BLOCK = 0.25;
     /** Як далеко вперед дивимося, щоб помітити сходинку до зіткнення. */
     private static final double LOOKAHEAD = 1.0;
+    /** Додатковий розгін на краю перепаду (санки летять трохи далі, ніж би їхали по снігу). */
+    private static final double EDGE_BOOST = 1.15;
     /** Вертикальний імпульс на краю рампи: скільки вгору за кожну одиницю горизонтальної швидкості. */
     private static final double LAUNCH_FACTOR = 0.35;
     /** Мінімальна швидкість, нижче якої санки зупиняються. */
@@ -349,22 +351,14 @@ public final class Sled implements Listener {
             }
             double launchVy = Double.NaN;
             if (hs > 0.01) {
-                // попереду: сходинка — заїжджаємо на неї з втратою швидкості пропорційно висоті; стіна — зупиняє
+                // попереду: сходинка — заїжджаємо з втратою швидкості; перепад вниз або порожнеча — розбіг підкидає
                 double nx = bl.getX() + vx / hs * LOOKAHEAD;
                 double nz = bl.getZ() + vz / hs * LOOKAHEAD;
                 World w = bl.getWorld();
-                int bx = (int) Math.floor(nx);
-                int bz = (int) Math.floor(nz);
-                Block low = w.getBlockAt(bx, (int) Math.floor(bl.getY() - 0.5), bz);
-                Block high = w.getBlockAt(bx, (int) Math.floor(bl.getY() + 0.5), bz);
-                double aheadTop = Math.max(surfaceTop(low), surfaceTop(high));
+                double aheadTop = columnTop(w, nx, nz, bl.getY());
                 double step = aheadTop - bl.getY();
-                if (aheadTop == 0.0 && sled.isOnGround() && hs > 0.3) {
-                    // попереду порожнеча (край рампи або обрив): розбіг підкидає санки вгору по інерції
-                    launchVy = hs * LAUNCH_FACTOR;
-                }
-                boolean wall = !isSlidable(high.getType()) && high.getType().isSolid() && step > STEP_UP;
-                if (wall || step > STEP_UP) {
+                if (step > STEP_UP) {
+                    // стіна вища за сходинку — зупиняє
                     vx = 0;
                     vz = 0;
                 } else if (step > 0.05) {
@@ -372,6 +366,11 @@ public final class Sled implements Listener {
                     double keep = Math.max(0.0, 1.0 - UPHILL_LOSS_PER_BLOCK * step);
                     vx *= keep;
                     vz *= keep;
+                } else if (step < -0.3 && sled.isOnGround()) {
+                    // перепад вниз або порожнеча: санки злітають з краю по інерції, з додатковим розгоном
+                    launchVy = hs * LAUNCH_FACTOR;
+                    vx *= EDGE_BOOST;
+                    vz *= EDGE_BOOST;
                 }
             }
             st[0] = vx;
@@ -379,6 +378,19 @@ public final class Sled implements Listener {
             speed.put(entry.getKey(), st);
             sled.setVelocity(new Vector(vx, Double.isNaN(launchVy) ? v.getY() : launchVy, vz));
         }
+    }
+
+    /** Найвища верхня поверхня в колонці біля висоти y (0, якщо її немає). */
+    private static double columnTop(World w, double x, double z, double y) {
+        int bx = (int) Math.floor(x);
+        int bz = (int) Math.floor(z);
+        for (int by = (int) Math.floor(y + 1.5); by >= (int) Math.floor(y - 2.5); by--) {
+            double t = surfaceTop(w.getBlockAt(bx, by, bz));
+            if (t > 0) {
+                return t;
+            }
+        }
+        return 0.0;
     }
 
     /** Висота верхньої поверхні блока (для сходинок): сніг і лід — свій рівень, суцільний блок — повний, повітря — 0. */

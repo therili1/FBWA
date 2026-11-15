@@ -8,6 +8,7 @@ import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Лід наростає фронтом від берега: за кожен цикл холоду замерзає один шар води,
@@ -31,6 +32,7 @@ public final class IceSystem {
         }
         double freeze = cfg.getDouble("ice.freeze-below", -5.0);
         double thaw = cfg.getDouble("ice.thaw-above", 0.0);
+        double thawChance = Math.max(0.0, Math.min(1.0, cfg.getDouble("ice.thaw-chance", 0.02)));
         int radius = Math.max(4, cfg.getInt("ice.radius", 20));
         int cap = Math.max(20, cfg.getInt("ice.max-per-tick", 300));
 
@@ -52,7 +54,8 @@ public final class IceSystem {
                             toFreeze.add(b);
                         }
                     } else if (m == Material.ICE) {
-                        if (heat.growthTemp(b) > thaw) {
+                        // танення поступове: не весь лід за один тік, а з ймовірністю
+                        if (heat.growthTemp(b) > thaw && ThreadLocalRandom.current().nextDouble() < thawChance) {
                             b.setType(Material.WATER, false);
                         }
                     }
