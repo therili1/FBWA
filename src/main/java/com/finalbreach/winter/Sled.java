@@ -48,7 +48,7 @@ import java.util.UUID;
  *  - Присідання + ПКМ (без пасажира) — підібрати.
  * На спуску санки прискорюються вперед. Видно модель санок (ItemDisplay), сама стійка невидима.
  */
-public final class Sled implements Listener {
+public final class Sled implements Listener, org.bukkit.command.CommandExecutor {
 
     /** Тертя по снігу: 1 = без тертя, менше = більше ковзання. */
     private static final double FRICTION = 0.985;
@@ -187,6 +187,8 @@ public final class Sled implements Listener {
             d.setTransformation(new Transformation(
                     new Vector3f(0, 0.5F, 0), new Quaternionf(), new Vector3f(1, 1, 1), new Quaternionf()));
             d.setPersistent(false);
+            d.setTeleportDuration(1);      // модель плавно догонить стійку, без ривків
+            d.setInterpolationDuration(1);
         });
         visuals.put(stand.getUniqueId(), visual);
         lastY.put(stand.getUniqueId(), stand.getLocation().getY());
@@ -205,16 +207,10 @@ public final class Sled implements Listener {
     /** ЛКМ по санках: підштовхуємо (навіть із пасажиром). Удар по санках не завдає шкоди ніколи. */
     @EventHandler
     public void onHit(EntityDamageByEntityEvent e) {
-        // удар по сидячому гравцеві теж вважаємо ударом по санках: шкоди немає, штовхаємо санки
-        ArmorStand sled = null;
-        if (isSledStand(e.getEntity())) {
-            sled = (ArmorStand) e.getEntity();
-        } else if (e.getEntity() instanceof Player rider && isSledStand(rider.getVehicle())) {
-            sled = (ArmorStand) rider.getVehicle();
-        }
-        if (sled == null) {
+        if (!isSledStand(e.getEntity())) {
             return;
         }
+        ArmorStand sled = (ArmorStand) e.getEntity();
         e.setCancelled(true);
         if (e.getDamager() instanceof Player p) {
             // штовхати можна і тоді, коли на санках хтось сидить; сила залежить від розбігу або присідання
@@ -223,15 +219,41 @@ public final class Sled implements Listener {
         }
     }
 
-    /** Пасажир санок не отримує шкоду від падіння (санки з'їжджають з гірки, а падає тільки сидячий). */
+    /** Фол-дамаг для сидячих на санках: за замовчуванням вимкнений (команда /falldamage). */
+    private boolean fallDamageOn = false;
+
     @EventHandler
     public void onFall(EntityDamageEvent e) {
-        if (e.getCause() != EntityDamageEvent.DamageCause.FALL || !(e.getEntity() instanceof Player p)) {
+        if (fallDamageOn || e.getCause() != EntityDamageEvent.DamageCause.FALL || !(e.getEntity() instanceof Player p)) {
             return;
         }
         if (p.getVehicle() != null && isSledStand(p.getVehicle())) {
             e.setCancelled(true);
         }
+    }
+
+    /** /falldamage on|off|status — фол-дамаг для тих, хто сидить на санках. */
+    @Override
+    public boolean onCommand(org.bukkit.command.CommandSender sender, org.bukkit.command.Command cmd,
+                             String label, String[] args) {
+        if (args.length == 0 || args[0].equalsIgnoreCase("status")) {
+            sender.sendMessage(Component.text("Фол-дамаг санок: " + (fallDamageOn ? "увімкнений" : "вимкнений"),
+                    NamedTextColor.GRAY));
+            return true;
+        }
+        switch (args[0].toLowerCase(java.util.Locale.ROOT)) {
+            case "on" -> {
+                fallDamageOn = true;
+                sender.sendMessage(Component.text("Фол-дамаг санок увімкнено.", NamedTextColor.GREEN));
+            }
+            case "off" -> {
+                fallDamageOn = false;
+                sender.sendMessage(Component.text("Фол-дамаг санок вимкнено.", NamedTextColor.GREEN));
+            }
+            default -> sender.sendMessage(Component.text("Використання: /falldamage <on|off|status>",
+                    NamedTextColor.RED));
+        }
+        return true;
     }
 
     private void push(ArmorStand sled, Player p, double force) {
@@ -373,8 +395,10 @@ public final class Sled implements Listener {
                     vx = 0;
                     vz = 0;
                 } else if (step > 0.05) {
-                    sled.teleport(new Location(w, bl.getX(), aheadTop, bl.getZ(), bl.getYaw(), 0F));
-                    double keep = Math.max(0.0, 1.0 - UPHILL_LOSS_PER_BLOCK * step);
+                    // плавний підйом: за тік не більше 0.3 блока, без підскоків
+                    double climb = Math.min(step, 0.3);
+                    sled.teleport(new Location(w, bl.getX(), bl.getY() + climb, bl.getZ(), bl.getYaw(), 0F));
+                    double keep = Math.max(0.0, 1.0 - UPHILL_LOSS_PER_BLOCK * climb);
                     vx *= keep;
                     vz *= keep;
                 } else if (step < -0.3 && sled.isOnGround()) {

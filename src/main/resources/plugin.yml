@@ -15,6 +15,11 @@ commands:
     usage: /wl add|remove|list|reload [нік]
     permission: finalbreach.wl
     permission-message: Немає прав на цю команду.
+  falldamage:
+    description: Фол-дамаг для сидячих на санках
+    usage: /falldamage <on|off|status>
+    permission: finalbreach.winter.admin
+    permission-message: Немає прав на цю команду.
   bighead:
     description: Пасхалка
     usage: /bighead
