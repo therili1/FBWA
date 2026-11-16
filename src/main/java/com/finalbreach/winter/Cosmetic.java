@@ -58,42 +58,28 @@ public final class Cosmetic implements CommandExecutor, TabCompleter {
         addSet(8, "garland", "Гірлянди", true, false, "Гірляндн", Material.DIAMOND);
     }
 
-    /** Назви предметів для гравця (українські, з правильним родом). */
-    private static final java.util.Map<String, String[]> ARMOR_NAMES = java.util.Map.of(
-            "krygova_guild", new String[]{"Крижаний шолом", "Крижаний нагрудник", "Крижані штани", "Крижані черевики"},
-            "polar_guard", new String[]{"Полярний шолом", "Полярний нагрудник", "Полярні штани", "Полярні черевики"},
-            "elven_forest", new String[]{"Ельфійський шолом", "Ельфійський нагрудник", "Ельфійські штани", "Ельфійські черевики"},
-            "leather_hunter", new String[]{"Мисливський шолом", "Мисливський нагрудник", "Мисливські штани", "Мисливські черевики"},
-            "crystal_knight", new String[]{"Кришталевий шолом", "Кришталевий нагрудник", "Кришталеві штани", "Кришталеві черевики"},
-            "newyear_gnome", new String[]{"Новорічний шолом", "Новорічний нагрудник", "Новорічні штани", "Новорічні черевики"});
-
-    private static final java.util.Map<String, String[]> TOOL_NAMES = java.util.Map.of(
-            "krygova_guild", new String[]{"Крижаний меч", "Крижана кирка", "Крижана сокира", "Крижана лопата", "Крижана мотика"},
-            "polar_guard", new String[]{"Полярний меч", "Полярна кирка", "Полярна сокира", "Полярна лопата", "Полярна мотика"},
-            "elven_forest", new String[]{"Ельфійський меч", "Ельфійська кирка", "Ельфійська сокира", "Ельфійська лопата", "Ельфійська мотика"},
-            "wreath", new String[]{"Вінковий меч", "Вінкова кирка", "Вінкова сокира", "Вінкова лопата", "Вінкова мотика"},
-            "candy_fair", new String[]{"Солодкий меч", "Солодка кирка", "Солодка сокира", "Солодка лопата", "Солодка мотика"},
-            "garland", new String[]{"Гірляндний меч", "Гірляндна кирка", "Гірляндна сокира", "Гірляндна лопата", "Гірляндна мотика"});
-
     private static void addSet(int index, String id, String name, boolean tools, boolean armorOnly,
-                               String unused, Material base) {
+                               String adj, Material base) {
         List<Piece> pieces = new ArrayList<>();
         int cmdBase = 3000 + index * 100;
-        if (ARMOR_NAMES.containsKey(id)) {
+        if (!tools || armorOnly) {
+            // броня: шолом, нагрудник, штани, черевики (для лише-броньових наборів — теж)
+            String[] names = {"шолом", "нагрудник", "штани", "черевики"};
             Material[] mats = armorMaterials(base);
             Part[] parts = {Part.HELMET, Part.CHESTPLATE, Part.LEGGINGS, Part.BOOTS};
-            String[] names = ARMOR_NAMES.get(id);
             for (int i = 0; i < 4; i++) {
-                pieces.add(new Piece(id + "_" + parts[i].name().toLowerCase(Locale.ROOT), names[i], mats[i], parts[i], cmdBase + i));
+                pieces.add(new Piece(id + "_" + parts[i].name().toLowerCase(Locale.ROOT),
+                        capitalize(adj + "ий " + names[i]).replace("Ий ", "Ий "), mats[i], parts[i], cmdBase + i));
             }
         }
-        if (TOOL_NAMES.containsKey(id)) {
+        if (tools) {
+            String[] names = {"меч", "кирка", "сокира", "лопата", "мотика"};
             Material[] mats = {Material.DIAMOND_SWORD, Material.DIAMOND_PICKAXE, Material.DIAMOND_AXE,
                     Material.DIAMOND_SHOVEL, Material.DIAMOND_HOE};
             Part[] parts = {Part.SWORD, Part.PICKAXE, Part.AXE, Part.SHOVEL, Part.HOE};
-            String[] names = TOOL_NAMES.get(id);
             for (int i = 0; i < 5; i++) {
-                pieces.add(new Piece(id + "_" + parts[i].name().toLowerCase(Locale.ROOT), names[i], mats[i], parts[i], cmdBase + 4 + i));
+                pieces.add(new Piece(id + "_" + parts[i].name().toLowerCase(Locale.ROOT),
+                        capitalize(adj + "а " + names[i]), mats[i], parts[i], cmdBase + 4 + i));
             }
         }
         SETS.add(new SetDef(id, name, pieces));
