@@ -124,6 +124,12 @@ public final class WinterPlugin extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(sled, this);
         getServer().getScheduler().runTaskTimer(this, sled::tick, 1L, 1L);
         sled.registerRecipe();
+        Cosmetic cosmetic = new Cosmetic(this);
+        PluginCommand cosmeticCmd = getCommand("cosmetic");
+        if (cosmeticCmd != null) {
+            cosmeticCmd.setExecutor(cosmetic);
+            cosmeticCmd.setTabCompleter(cosmetic);
+        }
         PluginCommand fallCmd = getCommand("falldamage");
         if (fallCmd != null) {
             fallCmd.setExecutor(sled);
