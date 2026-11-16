@@ -290,6 +290,31 @@ public final class Sled implements Listener, org.bukkit.command.CommandExecutor 
         speed.put(sled.getUniqueId(), new double[]{push.getX(), push.getZ()});
     }
 
+    /**
+     * ЛКМ по санках через їхній невидимий Interaction: Interaction не отримує шкоди, тож удар не
+     * приходить як EntityDamageByEntityEvent. Ловимо взмах руки і промінь з очей гравця.
+     * Удар по самій стійці обробляє onHit, тому тут штовхаємо лише для Interaction (без подвійного поштовху).
+     */
+    @EventHandler
+    public void onSwing(org.bukkit.event.player.PlayerAnimationEvent e) {
+        if (e.getAnimationType() != org.bukkit.event.player.PlayerAnimationType.ARM_SWING) {
+            return;
+        }
+        Player p = e.getPlayer();
+        org.bukkit.util.RayTraceResult hit = p.getWorld().rayTraceEntities(
+                p.getEyeLocation(), p.getEyeLocation().getDirection(), 4.0,
+                en -> en instanceof org.bukkit.entity.Interaction && standOfHitbox.containsKey(en.getUniqueId()));
+        if (hit == null || hit.getHitEntity() == null) {
+            return;
+        }
+        ArmorStand sled = standOf(hit.getHitEntity());
+        if (sled == null) {
+            return;
+        }
+        double force = p.isSprinting() ? PUSH_SPRINT : (p.isSneaking() ? PUSH_SNEAK : PUSH);
+        push(sled, p, force);
+    }
+
     /** ПКМ по санках: сідаємо; присідання + ПКМ без пасажира: підбираємо. */
     @EventHandler
     public void onRightClick(PlayerInteractEntityEvent e) {
