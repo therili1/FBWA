@@ -123,7 +123,7 @@ public final class WinterPlugin extends JavaPlugin implements Listener {
         Sled sled = new Sled(this);
         getServer().getPluginManager().registerEvents(sled, this);
         getServer().getScheduler().runTaskTimer(this, sled::tick, 1L, 1L);
-        sled.registerRecipe();
+        sled.registerRecipes();
         PluginCommand fallCmd = getCommand("falldamage");
         if (fallCmd != null) {
             fallCmd.setExecutor(sled);
