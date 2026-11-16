@@ -98,6 +98,8 @@ public final class Settings {
     public final boolean campfireUnlit;
     public final int fuelCap;
     public final int stickSeconds;
+    public final int plankSeconds;
+    public final int logSeconds;
     public final int coalSeconds;
     public final int unknownLitSeconds;
     public final int exposedBurn;
@@ -200,8 +202,10 @@ public final class Settings {
         sources = parseSources(c, log);
 
         campfireUnlit = c.getBoolean("campfire.place-unlit", true);
-        fuelCap = Math.max(10, c.getInt("campfire.fuel-cap-seconds", 600));
-        stickSeconds = Math.max(1, c.getInt("campfire.stick-seconds", 30));
+        fuelCap = Math.max(10, c.getInt("campfire.fuel-cap-seconds", 1200));
+        stickSeconds = Math.max(1, c.getInt("campfire.stick-seconds", 60));
+        plankSeconds = Math.max(1, c.getInt("campfire.plank-seconds", 30));
+        logSeconds = Math.max(1, c.getInt("campfire.log-seconds", 140));
         coalSeconds = Math.max(1, c.getInt("campfire.coal-seconds", 180));
         unknownLitSeconds = Math.max(1, c.getInt("campfire.unknown-lit-seconds", 300));
         exposedBurn = Math.max(1, c.getInt("campfire.exposed-burn-multiplier", 3));

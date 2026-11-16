@@ -92,6 +92,10 @@ public final class CampfireSystem implements Listener, Runnable {
             add = s.stickSeconds;
         } else if (m == Material.COAL || m == Material.CHARCOAL) {
             add = s.coalSeconds;
+        } else if (m.name().endsWith("_PLANKS")) {
+            add = s.plankSeconds;
+        } else if (m.name().endsWith("_LOG")) {
+            add = s.logSeconds;
         }
 
         if (add <= 0) {

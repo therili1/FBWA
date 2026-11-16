@@ -146,6 +146,7 @@ public final class Sled implements Listener, org.bukkit.command.CommandExecutor 
         if (!isSledItem(hand)) {
             return;
         }
+        e.setCancelled(true); // санки ніколи не стають човном, навіть на воді
         Block surface = e.getClickedBlock();
         if (surface == null) {
             return;
@@ -157,9 +158,9 @@ public final class Sled implements Listener, org.bukkit.command.CommandExecutor 
             }
         }
         if (!isSlidable(surface.getType())) {
+            e.getPlayer().sendActionBar(Component.text("Санки ставляться тільки на сніг або лід", NamedTextColor.RED));
             return;
         }
-        e.setCancelled(true);
         Player p = e.getPlayer();
         // висота поверхні: для шару снігу — його товщина, для інших блоків — повний блок
         double top = surface.getType() == Material.SNOW
@@ -169,12 +170,7 @@ public final class Sled implements Listener, org.bukkit.command.CommandExecutor 
         ArmorStand stand = (ArmorStand) loc.getWorld().spawnEntity(loc, EntityType.ARMOR_STAND);
         stand.getPersistentDataContainer().set(sledKey, PersistentDataType.BYTE, (byte) 1);
         stand.setVisible(false);       // стійку не малюємо: видно модель санок
-        stand.setSmall(false);
-        // хітбокс санок більший, щоб було легше влучити і штовхнути сидячого друга
-        var scale = stand.getAttribute(org.bukkit.attribute.Attribute.SCALE);
-        if (scale != null) {
-            scale.setBaseValue(1.4);
-        }
+        stand.setSmall(true); // низька стійка: сидіння на висоті санок
         stand.setBasePlate(false);
         stand.setArms(false);
         stand.setRotation(p.getLocation().getYaw(), 0F);

@@ -54,10 +54,10 @@ public final class Boiler implements Listener, CommandExecutor {
     }
 
     private static final Map<Material, Integer> DEFAULT_FUEL = Map.of(
-            Material.LAVA_BUCKET, 300,
-            Material.COAL, 80,
-            Material.CHARCOAL, 80,
-            Material.BLAZE_ROD, 120);
+            Material.LAVA_BUCKET, 600,
+            Material.COAL, 160,
+            Material.CHARCOAL, 160,
+            Material.BLAZE_ROD, 240);
 
     private final WinterPlugin plugin;
     private final NamespacedKey kGroup;
@@ -112,7 +112,16 @@ public final class Boiler implements Listener, CommandExecutor {
         if (sec != null && sec.contains(m.name())) {
             return sec.getInt(m.name());
         }
-        return DEFAULT_FUEL.getOrDefault(m, 0);
+        if (DEFAULT_FUEL.containsKey(m)) {
+            return DEFAULT_FUEL.get(m);
+        }
+        if (m.name().endsWith("_PLANKS")) {
+            return 30;
+        }
+        if (m.name().endsWith("_LOG")) {
+            return 140;
+        }
+        return 0;
     }
 
     /** Усі печі, з'єднані гранями з початковою (до maxMembers). */
