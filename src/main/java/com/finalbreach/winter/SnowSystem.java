@@ -324,20 +324,23 @@ public final class SnowSystem {
             double wind = storm ? 0.9 : 0.12;
             Location l = p.getLocation();
             if (storm) {
-                // Хуртовина: n — скільки сніжинок одночасно в зоні навколо гравця. Кожна живе близько 5 с,
-                // тож за цикл (4 тіки) спавнимо n/25. Кожна частинка перевіряється окремо: над нею дах — не спавнимо.
+                // Хуртовина: n — скільки сніжинок одночасно в зоні навколо гравця (кожна живе ~5 с, за цикл n/25).
+                // Під дахом спавнимо значно менше (n/100), щоб сніг, що пробиває стелю, майже не було видно і не било по FPS.
                 double r = radius;
                 double yMin = l.getY() + 12.0;
                 double yMax = Math.min(w.getMaxHeight() - 2.0, l.getY() + 24.0);
                 double strength = stormWind();
                 Climate.Wind fc = plugin.climate(w).windAt(w.getFullTime());
-                int perCycle = Math.max(1, n / 25);
+                boolean covered = w.getHighestBlockYAt(l, HeightMap.MOTION_BLOCKING) > l.getBlockY() + 2;
+                int perCycle = Math.max(1, covered ? n / 100 : n / 25);
                 for (int i = 0; i < perCycle; i++) {
                     double x = l.getX() + (rnd.nextDouble() * 2.0 - 1.0) * r;
                     double z = l.getZ() + (rnd.nextDouble() * 2.0 - 1.0) * r;
                     double y = yMin + rnd.nextDouble() * (yMax - yMin);
-                    if (w.getHighestBlockYAt((int) Math.floor(x), (int) Math.floor(z), HeightMap.MOTION_BLOCKING) >= y) {
-                        continue;
+                    p.spawnParticle(Particle.SNOWFLAKE, x, y, z, 0,
+                            fc.blowX() * strength, -0.15, fc.blowZ() * strength, 0.0);
+                }
+                continue;
                     }
                     p.spawnParticle(Particle.SNOWFLAKE, x, y, z, 0,
                             fc.blowX() * strength, -0.15, fc.blowZ() * strength, 0.0);
