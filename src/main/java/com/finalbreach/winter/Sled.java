@@ -169,7 +169,12 @@ public final class Sled implements Listener {
         ArmorStand stand = (ArmorStand) loc.getWorld().spawnEntity(loc, EntityType.ARMOR_STAND);
         stand.getPersistentDataContainer().set(sledKey, PersistentDataType.BYTE, (byte) 1);
         stand.setVisible(false);       // стійку не малюємо: видно модель санок
-        stand.setSmall(true);
+        stand.setSmall(false);
+        // хітбокс санок більший, щоб було легше влучити і штовхнути сидячого друга
+        var scale = stand.getAttribute(org.bukkit.attribute.Attribute.SCALE);
+        if (scale != null) {
+            scale.setBaseValue(1.4);
+        }
         stand.setBasePlate(false);
         stand.setArms(false);
         stand.setRotation(p.getLocation().getYaw(), 0F);
@@ -200,11 +205,17 @@ public final class Sled implements Listener {
     /** ЛКМ по санках: підштовхуємо (навіть із пасажиром). Удар по санках не завдає шкоди ніколи. */
     @EventHandler
     public void onHit(EntityDamageByEntityEvent e) {
-        if (!isSledStand(e.getEntity())) {
+        // удар по сидячому гравцеві теж вважаємо ударом по санках: шкоди немає, штовхаємо санки
+        ArmorStand sled = null;
+        if (isSledStand(e.getEntity())) {
+            sled = (ArmorStand) e.getEntity();
+        } else if (e.getEntity() instanceof Player rider && isSledStand(rider.getVehicle())) {
+            sled = (ArmorStand) rider.getVehicle();
+        }
+        if (sled == null) {
             return;
         }
         e.setCancelled(true);
-        ArmorStand sled = (ArmorStand) e.getEntity();
         if (e.getDamager() instanceof Player p) {
             // штовхати можна і тоді, коли на санках хтось сидить; сила залежить від розбігу або присідання
             double force = p.isSprinting() ? PUSH_SPRINT : (p.isSneaking() ? PUSH_SNEAK : PUSH);
