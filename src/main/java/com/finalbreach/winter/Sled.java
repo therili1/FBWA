@@ -84,6 +84,25 @@ public final class Sled implements Listener, org.bukkit.command.CommandExecutor 
     private final Map<UUID, Double> lastY = new HashMap<>();
     /** Модель санок, яка їде за стійкою. */
     private final Map<UUID, ItemDisplay> visuals = new HashMap<>();
+    /** Невидимий Interaction для кліків: ширший за стійку, стоїть на тому самому місці. */
+    private final Map<UUID, org.bukkit.entity.Interaction> hitbox = new HashMap<>();
+    private final Map<UUID, UUID> standOfHitbox = new HashMap<>();
+
+    /** Стійка санок, до якої відноситься сутність (сама стійка або її Interaction). */
+    private ArmorStand standOf(Entity e) {
+        if (isSledStand(e)) {
+            return (ArmorStand) e;
+        }
+        if (e instanceof org.bukkit.entity.Interaction) {
+            UUID id = standOfHitbox.get(e.getUniqueId());
+            Entity stand = id == null ? null : Bukkit.getEntity(id);
+            if (isSledStand(stand)) {
+                return (ArmorStand) stand;
+            }
+        }
+        return null;
+    }
+
     /** Горизонтальна швидкість санок (x, z). Minecraft гальмує сутність сам, тож тримаємо її тут. */
     private final Map<UUID, double[]> speed = new HashMap<>();
 
@@ -187,6 +206,14 @@ public final class Sled implements Listener, org.bukkit.command.CommandExecutor 
             d.setInterpolationDuration(1);
         });
         visuals.put(stand.getUniqueId(), visual);
+        org.bukkit.entity.Interaction box = (org.bukkit.entity.Interaction) loc.getWorld()
+                .spawnEntity(loc, EntityType.INTERACTION);
+        box.setInteractionWidth(1.2F);   // ширина клікабельної зони санок
+        box.setInteractionHeight(0.8F);  // висота не змінюється: сидіння лишається на місці
+        box.setResponsive(true);
+        box.setPersistent(false);
+        hitbox.put(stand.getUniqueId(), box);
+        standOfHitbox.put(box.getUniqueId(), stand.getUniqueId());
         lastY.put(stand.getUniqueId(), stand.getLocation().getY());
 
         ItemStack held = p.getInventory().getItemInMainHand();
@@ -203,10 +230,10 @@ public final class Sled implements Listener, org.bukkit.command.CommandExecutor 
     /** ЛКМ по санках: підштовхуємо (навіть із пасажиром). Удар по санках не завдає шкоди ніколи. */
     @EventHandler
     public void onHit(EntityDamageByEntityEvent e) {
-        if (!isSledStand(e.getEntity())) {
+        ArmorStand sled = standOf(e.getEntity());
+        if (sled == null) {
             return;
         }
-        ArmorStand sled = (ArmorStand) e.getEntity();
         e.setCancelled(true);
         if (e.getDamager() instanceof Player p) {
             // штовхати можна і тоді, коли на санках хтось сидить; сила залежить від розбігу або присідання
@@ -275,11 +302,11 @@ public final class Sled implements Listener, org.bukkit.command.CommandExecutor 
     }
 
     private void handleRightClick(Player p, Entity entity, org.bukkit.event.Cancellable cancel) {
-        if (!isSledStand(entity)) {
+        ArmorStand sled = standOf(entity);
+        if (sled == null) {
             return;
         }
         cancel.setCancelled(true);
-        ArmorStand sled = (ArmorStand) entity;
         if (!sled.isValid()) {
             return; // подія прийшла повторно, санки вже підібрані або сидимо
         }
@@ -306,6 +333,11 @@ public final class Sled implements Listener, org.bukkit.command.CommandExecutor 
         UUID id = sled.getUniqueId();
         lastY.remove(id);
         speed.remove(id);
+        org.bukkit.entity.Interaction box = hitbox.remove(id);
+        if (box != null) {
+            standOfHitbox.remove(box.getUniqueId());
+            box.remove();
+        }
         ItemDisplay v = visuals.remove(id);
         if (v != null) {
             v.remove();
@@ -325,6 +357,11 @@ public final class Sled implements Listener, org.bukkit.command.CommandExecutor 
             if (!(e instanceof ArmorStand sled) || !sled.isValid()) {
                 it.remove();
                 speed.remove(entry.getKey());
+                org.bukkit.entity.Interaction deadBox = hitbox.remove(entry.getKey());
+                if (deadBox != null) {
+                    standOfHitbox.remove(deadBox.getUniqueId());
+                    deadBox.remove();
+                }
                 ItemDisplay gone = visuals.remove(entry.getKey());
                 if (gone != null) {
                     gone.remove();
@@ -335,6 +372,10 @@ public final class Sled implements Listener, org.bukkit.command.CommandExecutor 
             ItemDisplay vis = visuals.get(entry.getKey());
             if (vis != null && vis.isValid()) {
                 vis.teleport(bl);
+            }
+            org.bukkit.entity.Interaction box = hitbox.get(entry.getKey());
+            if (box != null && box.isValid()) {
+                box.teleport(bl);
             }
 
             // сидячий повертає санки за своїм поглядом, без поштовху
