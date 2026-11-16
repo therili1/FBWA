@@ -341,11 +341,6 @@ public final class SnowSystem {
                             fc.blowX() * strength, -0.15, fc.blowZ() * strength, 0.0);
                 }
                 continue;
-                    }
-                    p.spawnParticle(Particle.SNOWFLAKE, x, y, z, 0,
-                            fc.blowX() * strength, -0.15, fc.blowZ() * strength, 0.0);
-                }
-                continue;
             }
             for (int i = 0; i < n; i++) {
                 double x = l.getX() + (rnd.nextDouble() * 2.0 - 1.0) * radius;
