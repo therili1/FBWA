@@ -15,11 +15,6 @@ commands:
     usage: /wl add|remove|list|reload [нік]
     permission: finalbreach.wl
     permission-message: Немає прав на цю команду.
-  cosmetic:
-    description: Видача косметики (броня і інструменти)
-    usage: /cosmetic <give|giveset|list>
-    permission: finalbreach.cosmetic.admin
-    permission-message: Немає прав на цю команду.
   falldamage:
     description: Фол-дамаг для сидячих на санках
     usage: /falldamage <on|off|status>
@@ -51,9 +46,6 @@ permissions:
   finalbreach.bighead:
     description: Пасхалка /bighead
     default: true
-  finalbreach.cosmetic.admin:
-    description: Видача косметики
-    default: op
   finalbreach.winter.immune:
     description: Імунітет до холоду
     default: false
