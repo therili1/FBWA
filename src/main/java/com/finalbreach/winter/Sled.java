@@ -164,12 +164,16 @@ public final class Sled implements Listener, CommandExecutor {
         Bukkit.addRecipe(r1);
 
         ShapelessRecipe r2 = new ShapelessRecipe(recipeKey2, sledItem(2));
-        r2.addIngredient(2, new RecipeChoice.ExactChoice(sledItem(1)));
+        RecipeChoice sled1 = new RecipeChoice.ExactChoice(List.of(sledItem(1)));
+        r2.addIngredient(sled1);
+        r2.addIngredient(sled1);
         r2.addIngredient(2, Material.IRON_INGOT);
         Bukkit.addRecipe(r2);
 
         ShapelessRecipe r4 = new ShapelessRecipe(recipeKey4, sledItem(4));
-        r4.addIngredient(2, new RecipeChoice.ExactChoice(sledItem(2)));
+        RecipeChoice sled2 = new RecipeChoice.ExactChoice(List.of(sledItem(2)));
+        r4.addIngredient(sled2);
+        r4.addIngredient(sled2);
         r4.addIngredient(4, Material.IRON_INGOT);
         Bukkit.addRecipe(r4);
     }
