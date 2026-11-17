@@ -86,6 +86,12 @@ public final class Sled implements Listener, CommandExecutor {
 
     /** Зсуви місць (x, z) відносно тіла санок для 2 і 4 місць. */
     private static final double[][] OFFSETS_2 = {{-0.45, 0}, {0.45, 0}};
+    /** Останні позиції санок для визначення напрямку руху. */
+    private static final Map<UUID, org.bukkit.Location> LAST_POS = new HashMap<>();
+    /** Мінімальний зсув за тік, щоб санки повернулися (квадрат відстані). */
+    private static final double MIN_MOVE_SQ = 0.0025;
+    /** Максимальний поворот санок за один тік, у градусах. */
+    private static final float MAX_TURN_PER_TICK = 6F;
     private static final double[][] OFFSETS_4 = {{-0.45, -0.5}, {0.45, -0.5}, {-0.45, 0.5}, {0.45, 0.5}};
 
     private final WinterPlugin plugin;
@@ -510,13 +516,21 @@ public final class Sled implements Listener, CommandExecutor {
             if (box != null && box.isValid()) {
                 box.teleport(bl);
             }
-            // санки повертаються за напрямком руху, а не за поглядом гравця;
-            // коли стоять або майже стоять, кут лишається попереднім
-            Vector mv = body.getVelocity();
-            float yaw = body.getLocation().getYaw();
-            if (mv.getX() * mv.getX() + mv.getZ() * mv.getZ() > 0.0025) {
-                yaw = (float) Math.toDegrees(Math.atan2(-mv.getX(), mv.getZ()));
+            // санки повертаються за напрямком руху (зсув позиції між тіками), а не за поглядом гравця.
+            // Поворот обмежений MAX_TURN_PER_TICK, тож без ривків з боку в бік.
+            float current = body.getLocation().getYaw();
+            float yaw = current;
+            org.bukkit.Location prev = LAST_POS.get(id);
+            if (prev != null && prev.getWorld() != null && prev.getWorld().equals(bl.getWorld())) {
+                double dx = bl.getX() - prev.getX();
+                double dz = bl.getZ() - prev.getZ();
+                if (dx * dx + dz * dz > MIN_MOVE_SQ) {
+                    float target = (float) Math.toDegrees(Math.atan2(-dx, dz));
+                    float diff = ((target - current) % 360F + 540F) % 360F - 180F;
+                    yaw = current + Math.max(-MAX_TURN_PER_TICK, Math.min(MAX_TURN_PER_TICK, diff));
+                }
             }
+            LAST_POS.put(id, bl.clone());
             body.setRotation(yaw, 0F);
             if (vis != null && vis.isValid()) {
                 vis.setRotation(yaw, 0F);
