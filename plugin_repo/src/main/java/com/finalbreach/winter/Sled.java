@@ -127,7 +127,7 @@ public final class Sled implements Listener, CommandExecutor {
     public ItemStack sledItem(int seats) {
         ItemStack it = new ItemStack(Material.OAK_BOAT);
         ItemMeta m = it.getItemMeta();
-        String name = seats == 1 ? "Санки" : "Санки на " + seats;
+        String name = seats == 1 ? "Санки" : seats == 2 ? "Двомісні санки" : seats == 4 ? "Чотиримісні санки" : "Санки на " + seats;
         m.displayName(Component.text(name, NamedTextColor.AQUA));
         m.setCustomModelData(seats == 1 ? 2001 : seats == 2 ? 2002 : 2003);
         m.getPersistentDataContainer().set(sledKey, PersistentDataType.BYTE, (byte) 1);
@@ -510,8 +510,17 @@ public final class Sled implements Listener, CommandExecutor {
             if (box != null && box.isValid()) {
                 box.teleport(bl);
             }
-            // місця їдуть за тілом із зсувом
-            float yawFromRider = Float.NaN;
+            // санки повертаються за напрямком руху, а не за поглядом гравця;
+            // коли стоять або майже стоять, кут лишається попереднім
+            Vector mv = body.getVelocity();
+            float yaw = body.getLocation().getYaw();
+            if (mv.getX() * mv.getX() + mv.getZ() * mv.getZ() > 0.0025) {
+                yaw = (float) Math.toDegrees(Math.atan2(-mv.getX(), mv.getZ()));
+            }
+            body.setRotation(yaw, 0F);
+            if (vis != null && vis.isValid()) {
+                vis.setRotation(yaw, 0F);
+            }
             for (UUID seatId : seatsOf.getOrDefault(id, List.of())) {
                 Entity seat = Bukkit.getEntity(seatId);
                 if (!isSledStand(seat)) {
@@ -519,21 +528,7 @@ public final class Sled implements Listener, CommandExecutor {
                 }
                 int idx = seatsOf.get(id).indexOf(seatId);
                 double[][] offs = seatsOf.get(id).size() == 2 ? OFFSETS_2 : OFFSETS_4;
-                seat.teleport(seatLoc(bl, offs[idx], bl.getYaw()));
-                if (Float.isNaN(yawFromRider) && !seat.getPassengers().isEmpty()) {
-                    yawFromRider = seat.getPassengers().get(0).getLocation().getYaw();
-                }
-            }
-            if (Float.isNaN(yawFromRider) && !body.getPassengers().isEmpty()) {
-                yawFromRider = body.getPassengers().get(0).getLocation().getYaw();
-            }
-            if (!Float.isNaN(yawFromRider)) {
-                body.setRotation(yawFromRider, 0F);
-                if (vis != null && vis.isValid()) {
-                    vis.setRotation(yawFromRider, 0F);
-                }
-            } else if (vis != null && vis.isValid()) {
-                vis.setRotation(bl.getYaw(), 0F);
+                seat.teleport(seatLoc(bl, offs[idx], yaw));
             }
 
             if (!onSnow(bl)) {
