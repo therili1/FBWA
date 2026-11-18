@@ -1,0 +1,56 @@
+name: FinalBreachWinter
+version: ${project.version}
+main: com.finalbreach.winter.WinterPlugin
+api-version: '26.3'
+description: Зимова система - температура, прогноз, холод, тепло від вогню, сніг і грілки
+authors: [FinalBreach]
+commands:
+  flip:
+    description: Підкинути монетку
+  roll:
+    description: Кинути кубик, наприклад /roll 20
+    usage: /roll [граней]
+  forecast:
+    description: Прогноз температури та опадів
+    usage: /forecast
+    permission: finalbreach.forecast.use
+    permission-message: Немає прав на цю команду.
+  wl:
+    description: Керування білим списком сервера
+    usage: /wl add|remove|list|reload [нік]
+    permission: finalbreach.wl
+    permission-message: Немає прав на цю команду.
+  falldamage:
+    description: Фол-дамаг для сидячих на санках
+    usage: /falldamage <on|off|status>
+    permission: finalbreach.winter.admin
+    permission-message: Немає прав на цю команду.
+  bighead:
+    description: Пасхалка
+    usage: /bighead
+    permission: finalbreach.bighead
+    permission-message: Немає прав на цю команду.
+  boiler:
+    description: Котельня зі спільним запасом палива
+    usage: /boiler set|unset|info
+    permission: finalbreach.boiler
+    permission-message: Немає прав на цю команду.
+permissions:
+  finalbreach.boiler:
+    description: Керування котельнею
+    default: op
+  finalbreach.wl:
+    description: Керування білим списком
+    default: op
+  finalbreach.forecast.use:
+    description: Дозволяє дивитися /forecast
+    default: true
+  finalbreach.winter.admin:
+    description: /forecast change, here, override, reload
+    default: op
+  finalbreach.bighead:
+    description: Пасхалка /bighead
+    default: true
+  finalbreach.winter.immune:
+    description: Імунітет до холоду
+    default: false
