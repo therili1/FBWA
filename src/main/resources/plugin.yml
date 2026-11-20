@@ -5,6 +5,11 @@ api-version: '26.3'
 description: Зимова система - температура, прогноз, холод, тепло від вогню, сніг і грілки
 authors: [FinalBreach]
 commands:
+  flip:
+    description: Підкинути монетку
+  roll:
+    description: Кинути кубик, наприклад /roll 20
+    usage: /roll [граней]
   forecast:
     description: Прогноз температури та опадів
     usage: /forecast

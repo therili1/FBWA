@@ -491,7 +491,7 @@ public final class HeatField implements Runnable {
             return 0.6;
         }
         if (n.contains("PANE") || n.contains("GLASS")) {
-            return 0.25;
+            return 0.03;
         }
         if (n.contains("GATE")) {
             return 0.12;

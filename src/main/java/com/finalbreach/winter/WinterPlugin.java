@@ -63,6 +63,7 @@ public final class WinterPlugin extends JavaPlugin implements Listener {
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        DiceCommands.register(this);
         // Додаємо до існуючого config.yml нові ключі з дефолтів, не змінюючи значень, які вже є
         java.io.InputStream defaultsIn = getResource("config.yml");
         if (defaultsIn != null) {

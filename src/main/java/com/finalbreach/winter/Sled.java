@@ -86,6 +86,12 @@ public final class Sled implements Listener, CommandExecutor {
 
     /** Зсуви місць (x, z) відносно тіла санок для 2 і 4 місць. */
     private static final double[][] OFFSETS_2 = {{-0.45, 0}, {0.45, 0}};
+    /** Останні позиції санок для визначення напрямку руху. */
+    private static final Map<UUID, org.bukkit.Location> LAST_POS = new HashMap<>();
+    /** Мінімальний зсув за тік, щоб санки повернулися (квадрат відстані). */
+    private static final double MIN_MOVE_SQ = 0.0025;
+    /** Максимальний поворот санок за один тік, у градусах. */
+    private static final float MAX_TURN_PER_TICK = 6F;
     private static final double[][] OFFSETS_4 = {{-0.45, -0.5}, {0.45, -0.5}, {-0.45, 0.5}, {0.45, 0.5}};
 
     private final WinterPlugin plugin;
@@ -127,7 +133,7 @@ public final class Sled implements Listener, CommandExecutor {
     public ItemStack sledItem(int seats) {
         ItemStack it = new ItemStack(Material.OAK_BOAT);
         ItemMeta m = it.getItemMeta();
-        String name = seats == 1 ? "Санки" : "Санки на " + seats;
+        String name = seats == 1 ? "Санки" : seats == 2 ? "Двомісні санки" : seats == 4 ? "Чотиримісні санки" : "Санки на " + seats;
         m.displayName(Component.text(name, NamedTextColor.AQUA));
         m.setCustomModelData(seats == 1 ? 2001 : seats == 2 ? 2002 : 2003);
         m.getPersistentDataContainer().set(sledKey, PersistentDataType.BYTE, (byte) 1);
@@ -510,8 +516,25 @@ public final class Sled implements Listener, CommandExecutor {
             if (box != null && box.isValid()) {
                 box.teleport(bl);
             }
-            // місця їдуть за тілом із зсувом
-            float yawFromRider = Float.NaN;
+            // санки повертаються за напрямком руху (зсув позиції між тіками), а не за поглядом гравця.
+            // Поворот обмежений MAX_TURN_PER_TICK, тож без ривків з боку в бік.
+            float current = body.getLocation().getYaw();
+            float yaw = current;
+            org.bukkit.Location prev = LAST_POS.get(id);
+            if (prev != null && prev.getWorld() != null && prev.getWorld().equals(bl.getWorld())) {
+                double dx = bl.getX() - prev.getX();
+                double dz = bl.getZ() - prev.getZ();
+                if (dx * dx + dz * dz > MIN_MOVE_SQ) {
+                    float target = (float) Math.toDegrees(Math.atan2(-dx, dz));
+                    float diff = ((target - current) % 360F + 540F) % 360F - 180F;
+                    yaw = current + Math.max(-MAX_TURN_PER_TICK, Math.min(MAX_TURN_PER_TICK, diff));
+                }
+            }
+            LAST_POS.put(id, bl.clone());
+            body.setRotation(yaw, 0F);
+            if (vis != null && vis.isValid()) {
+                vis.setRotation(yaw, 0F);
+            }
             for (UUID seatId : seatsOf.getOrDefault(id, List.of())) {
                 Entity seat = Bukkit.getEntity(seatId);
                 if (!isSledStand(seat)) {
@@ -519,21 +542,7 @@ public final class Sled implements Listener, CommandExecutor {
                 }
                 int idx = seatsOf.get(id).indexOf(seatId);
                 double[][] offs = seatsOf.get(id).size() == 2 ? OFFSETS_2 : OFFSETS_4;
-                seat.teleport(seatLoc(bl, offs[idx], bl.getYaw()));
-                if (Float.isNaN(yawFromRider) && !seat.getPassengers().isEmpty()) {
-                    yawFromRider = seat.getPassengers().get(0).getLocation().getYaw();
-                }
-            }
-            if (Float.isNaN(yawFromRider) && !body.getPassengers().isEmpty()) {
-                yawFromRider = body.getPassengers().get(0).getLocation().getYaw();
-            }
-            if (!Float.isNaN(yawFromRider)) {
-                body.setRotation(yawFromRider, 0F);
-                if (vis != null && vis.isValid()) {
-                    vis.setRotation(yawFromRider, 0F);
-                }
-            } else if (vis != null && vis.isValid()) {
-                vis.setRotation(bl.getYaw(), 0F);
+                seat.teleport(seatLoc(bl, offs[idx], yaw));
             }
 
             if (!onSnow(bl)) {

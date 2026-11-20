@@ -45,6 +45,14 @@ public final class ForecastCommand implements TabExecutor, Listener {
         if (args.length >= 1) {
             String sub = args[0].toLowerCase(Locale.ROOT);
             switch (sub) {
+                case "snowcap" -> {
+                    if (!sender.hasPermission(ADMIN)) {
+                        sender.sendMessage(Component.text("Немає прав.", NamedTextColor.RED));
+                        return true;
+                    }
+                    snowcap(sender, args);
+                    return true;
+                }
                 case "reload", "override", "change", "here", "storm" -> {
                     if (!sender.hasPermission(ADMIN)) {
                         sender.sendMessage(Component.text("Немає прав.", NamedTextColor.RED));
@@ -386,6 +394,20 @@ public final class ForecastCommand implements TabExecutor, Listener {
         }
     }
 
+    // ---------- тимчасовий ліміт шарів снігу ----------
+
+    private void snowcap(CommandSender sender, String[] args) {
+        if (args.length < 2 || parse(args[1]) == null) {
+            sender.sendMessage(Component.text("Використання: /forecast snowcap <шари 1-256> [хвилин, за замовч. 30]", NamedTextColor.RED));
+            return;
+        }
+        int n = (int) Math.round(parse(args[1]));
+        int minutes = args.length >= 3 && parse(args[2]) != null ? (int) Math.round(parse(args[2])) : 30;
+        plugin.snow().setMaxLayers(n, minutes);
+        sender.sendMessage(Component.text("Ліміт шарів снігу: " + plugin.snow().maxLayers(plugin.settings())
+                + " на " + Math.max(1, minutes) + " хв, далі повертається з конфігу", NamedTextColor.AQUA));
+    }
+
     // ---------- підказки ----------
 
     @Override
@@ -395,13 +417,15 @@ public final class ForecastCommand implements TabExecutor, Listener {
             return out;
         }
         if (args.length == 1) {
-            for (String o : List.of("change", "here", "override", "reload", "storm")) {
+            for (String o : List.of("change", "here", "override", "reload", "storm", "snowcap")) {
                 if (o.startsWith(args[0].toLowerCase(Locale.ROOT))) {
                     out.add(o);
                 }
             }
         } else if (args.length == 2 && args[0].equalsIgnoreCase("override")) {
             out.add("off");
+        } else if (args.length == 2 && args[0].equalsIgnoreCase("snowcap")) {
+            out.addAll(List.of("16", "40", "64", "128"));
         } else if (args.length == 2 && args[0].equalsIgnoreCase("storm")) {
             out.addAll(List.of("on", "off", "status", "density", "radius", "snowrate", "viewdist", "wind"));
         } else if (args.length == 2 && args[0].equalsIgnoreCase("change")) {

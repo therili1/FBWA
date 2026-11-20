@@ -51,6 +51,22 @@ public final class SnowSystem {
         return stormWindOverride >= 0 ? stormWindOverride : 0.6;
     }
 
+    /** Тимчасовий ліміт шарів снігу (/forecast snowcap). -1 = з конфігу. */
+    private volatile int maxLayersOverride = -1;
+    private org.bukkit.scheduler.BukkitTask maxLayersRevert;
+
+    /** Ліміт висоти стовпа в шарах (1-256). Скидається через minutes. */
+    public synchronized void setMaxLayers(int n, int minutes) {
+        this.maxLayersOverride = Math.max(1, Math.min(256, n));
+        if (maxLayersRevert != null) maxLayersRevert.cancel();
+        long ticks = Math.max(1, minutes) * 60L * 20L;
+        maxLayersRevert = plugin.getServer().getScheduler().runTaskLater(plugin, () -> maxLayersOverride = -1, ticks);
+    }
+
+    public int maxLayers(Settings s) {
+        return maxLayersOverride > 0 ? maxLayersOverride : s.maxLayers;
+    }
+
     /** Live-множник накопичення снігу в хуртовину (/forecast storm snowrate). -1 = з конфігу. */
     private volatile double stormSnowMultOverride = -1;
 
@@ -166,9 +182,20 @@ public final class SnowSystem {
 
     // ---------- накопичення і танення ----------
 
+    /** Висота стовпа в шарах: наші блоки снігу під клітинкою (по 8 шарів) + шари на ній. */
+    private int stackHeight(Column c) {
+        int blocks = 0;
+        Block b = c.under();
+        while (blocks < 64 && b.getType() == Material.SNOW_BLOCK && marks.isOurs(b)) {
+            blocks++;
+            b = b.getRelative(BlockFace.DOWN);
+        }
+        return blocks * 8 + c.layers();
+    }
+
     private void accumulate(Column c, Settings s) {
-        int total = (c.baseOurs() ? 8 : 0) + c.layers();
-        if (total >= s.maxLayers) {
+        int total = stackHeight(c);
+        if (total >= maxLayers(s)) {
             return;
         }
         if (c.layers() > 0 && marks.isPlayer(c.cell())) {
